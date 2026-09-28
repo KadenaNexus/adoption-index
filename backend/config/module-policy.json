@@ -1,0 +1,65 @@
+{
+  "version": "kce-growing-policy-2-2026-09-27",
+  "description": "Fixed collection start 2026-06-29 with permanent growing daily history. Only newly deployed identities since collection start are eligible. Suspicious names require exact source evidence; never exclude by name alone. Kept for every decision below: the signed successful deployment (command, signers, module code, output, source block and header) in the database table module_deployments.evidence, and the review record in source_evidence (source 'module-artifact-review').",
+  "includedModules": [],
+  "excludedModules": [
+    "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST",
+    "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-launch-TEST",
+    "1:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST",
+    "2:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST"
+  ],
+  "decisions": {
+    "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST": {
+      "status": "excluded",
+      "reason": "The signed successful deployment explicitly identifies this module as a throwaway test copy in its module-level documentation.",
+      "sourceRequestKey": "JBpMz_aDp-xPJs2reAWWJk6a8yjDmSJsWf85Kgkv8EE",
+      "sourceHeight": "7184037",
+      "sourceBlockHash": "bD8KyDzEy-B2uZ_ytjuj7X50ItoU7vdSwYxmMSmXctU",
+      "codeSha256": "cbf0b4921c627b7fffeb420ada786c2315f8da193925588aba4ccd1bbc374eb1",
+      "retainedEvidenceSha256": "67519d23522e95f47c038aa83268a73d18594e21f762a39975616275da003c41",
+      "sourceDocQuote": "THROWAWAY TEST COPY (2026-08-29) — NOT the real SPT, holds no value, will be abandoned.",
+      "verifiedAt": "2026-09-27T16:19:52.921Z",
+      "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review)"
+    },
+    "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-launch-TEST": {
+      "status": "excluded",
+      "reason": "The signed successful deployment explicitly identifies this module as a throwaway test copy in its module-level documentation.",
+      "sourceRequestKey": "v47eLgOm8oKHVanZFi3PMOcLw-_uw-B-WfW_OkgruKE",
+      "sourceHeight": "7184043",
+      "sourceBlockHash": "KLiTStFc5xZtehmePQkWw6_vhFNWV6Cb-8wVTuuLuMA",
+      "codeSha256": "363d7a43949859e805eb4d3c2507ff518ab7e8479bbef7b0e202166494c691e4",
+      "retainedEvidenceSha256": "1b7dba51d7f8f51a577f4d6ae3b9cab30bc1f1d23a005a79a9395e4f69571c10",
+      "sourceDocQuote": "THROWAWAY TEST COPY (2026-08-29) — NOT the real SPT, holds no value, will be abandoned.",
+      "verifiedAt": "2026-09-27T16:19:52.921Z",
+      "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review)"
+    },
+    "1:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST": {
+      "status": "excluded",
+      "reason": "The signed successful deployment explicitly identifies this module as a throwaway test copy in its module-level documentation.",
+      "sourceRequestKey": "ifFJRMmQlAjKmD8PIYB0qgD7No8sdAd81KjkusiPeN0",
+      "sourceHeight": "7184316",
+      "sourceBlockHash": "AkzWF4Eqflko_ckasuh_Tmk6q5j8bO3rrLWmUfY9FaE",
+      "codeSha256": "cbf0b4921c627b7fffeb420ada786c2315f8da193925588aba4ccd1bbc374eb1",
+      "retainedEvidenceSha256": "92e69ce21c66cf742bb035747c834b1463c0a1e6c1f36ea86ed1e920fdc369d3",
+      "sourceDocQuote": "THROWAWAY TEST COPY (2026-08-29) — NOT the real SPT, holds no value, will be abandoned.",
+      "verifiedAt": "2026-09-27T16:19:52.921Z",
+      "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review)"
+    },
+    "2:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST": {
+      "status": "excluded",
+      "reason": "The signed successful deployment explicitly identifies this module as a throwaway test copy in its module-level documentation.",
+      "sourceRequestKey": "7gzKdIdasTnFAh_dp77zytN9wjfbhP2gd0rdkgUv5lU",
+      "sourceHeight": "7184359",
+      "sourceBlockHash": "4YvnWp6CbbImaRl7yBW3q6P8qiZWlr5s050YrSsir6E",
+      "codeSha256": "cbf0b4921c627b7fffeb420ada786c2315f8da193925588aba4ccd1bbc374eb1",
+      "retainedEvidenceSha256": "aa8eec4485508ad0c584bb98e9e5991e85abb11ef2031eeacb55aa4c499d7e01",
+      "sourceDocQuote": "THROWAWAY TEST COPY (2026-08-29) — NOT the real SPT, holds no value, will be abandoned.",
+      "verifiedAt": "2026-09-27T16:19:52.921Z",
+      "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review)"
+    }
+  },
+  "reviewNamePatterns": [
+    "(^|[._-])(test|tests|demo|mock|example|sandbox|hello)([._-]|$)",
+    "(^|[._-])(dev|development|bench|benchmark|benchmarks)([._-]|$)"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": "kce-fixed-baseline-1",
+  "collectionStart": "2026-06-29",
+  "initialHistoryDays": 90,
+  "initialThroughDay": "2026-09-26",
+  "normalization": "fixed-baseline-first-30-days",
+  "baselineDays": 30,
+  "baselineThroughDay": "2026-07-28",
+  "baselineLevel": 50,
+  "minimumDailyBaseline": {
+    "contracts": 1,
+    "commits": 1
+  },
+  "minimumDailyBaselineRule": "Count baselines below one event per day are too sparse for a stable 7-day ratio; the documented minimum of one per day (7 per 7-day window) is used instead and flagged. Average-based baselines must be above zero or publication stops.",
+  "dailyHistory": "permanent",
+  "earlierHistoryIncluded": false
+}

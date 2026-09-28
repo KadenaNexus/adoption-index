@@ -1,0 +1,180 @@
+{
+  "version": "2026-09-26.1",
+  "network": "mainnet01",
+  "baselineHeight": 6335858,
+  "scope": "TVL in the explicitly listed Pact protocol components, valued from native state. This registry defines index coverage; it is not a claim to enumerate every application on the network.",
+  "snapshot": "Canonical final block before the end of each UTC day on each component's chain. The fork date is a partial observation starting at block 6335858.",
+  "valuation": "Native coin reserves plus non-native reserves valued at the same pool's KDA reserve ratio; standalone deposits valued against the largest native KDA pool on the same chain. No LP receipt token or staking of LP receipts is counted separately. All prices are spot pool-implied valuations, including illiquid assets, not independently realizable sale proceeds.",
+  "usdPrice": {
+    "source": "https://dexapi.kadena.fun/candles?currency=USDT&asset=KDA",
+    "purpose": "KDA/USD display conversion only; never the primary TVL source",
+    "convention": "Provider's daily close field is its final five-minute OHLC mean for KDA/USDT. USDT is treated as one USD; displayed USD is an estimate. The index scores KDA values only."
+  },
+  "protocols": [
+    {
+      "id": "mercatus-amm",
+      "name": "Mercatus liquidity pools",
+      "chain": "2",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "kaddex.exchange",
+      "read": "(select kaddex.exchange.pairs (constantly true))",
+      "ownership": "Each pool account's leg0 and leg1 reserves; fees and LP receipts excluded",
+      "valuation": "Two sides of each native KDA pair, with the token leg priced at that pool's reserve ratio",
+      "discovery": "All pair-table rows, including pools absent from the public Mercatus API",
+      "source": "https://github.com/Mercatus-Kadena/dex_api"
+    },
+    {
+      "id": "mercatus-staking",
+      "name": "Mercatus KDX staking",
+      "chain": "2",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "kaddex.staking",
+      "read": "(kaddex.staking.get-pool-state)",
+      "ownership": "staked-kdx field only; burnt KDX, cumulative revenue and LP positions excluded",
+      "asset": "kaddex.kdx",
+      "valuation": "KDX amount times the native Mercatus KDX/KDA reserve ratio",
+      "source": "https://github.com/Mercatus-Kadena/dex_api"
+    },
+    {
+      "id": "kdswap-amm",
+      "name": "KDSwap liquidity pools",
+      "chain": "1",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "kdlaunch.kdswap-exchange",
+      "read": "(select kdlaunch.kdswap-exchange.pairs (constantly true))",
+      "ownership": "Each pool account's two reserves; LP receipts and fee accounts excluded",
+      "valuation": "Two sides of each native KDA pair at that pool's reserve ratio",
+      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/kdswap/index.js"
+    },
+    {
+      "id": "kdlaunch-staking",
+      "name": "KDLaunch KDL staking",
+      "chain": "1",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "kdlaunch.staking",
+      "read": "(kdlaunch.staking.get-staking-stats)",
+      "ownership": "totalStaked field only; cumulative rewarded tokens excluded",
+      "asset": "kdlaunch.token",
+      "valuation": "Staked KDL times the native chain-1 KDSwap KDL/KDA reserve ratio",
+      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/kdlaunch/index.js"
+    },
+    {
+      "id": "chips-locked",
+      "name": "Chips locked tokens",
+      "chain": "2",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "n_e98a056e3e14203e6ec18fada427334b21b667d8.chips",
+      "account": "chips-locked-wallet",
+      "assets": [
+        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cKDA",
+        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cBTC",
+        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cLTC",
+        "n_e98a056e3e14203e6ec18fada427334b21b667d8.kWATT"
+      ],
+      "read": "Each asset's get-balance for chips-locked-wallet",
+      "ownership": "Four separate locked token balances; no mining hardware appraisal or reward claims added",
+      "valuation": "Each locked token at its native Mercatus KDA pool reserve ratio, including kWATT. Avoids the protocol's stale USD oracle",
+      "source": "https://www.chips.finance/"
+    },
+    {
+      "id": "cabinet",
+      "name": "Kadena Cabinet treasury lock",
+      "chain": "5",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "module": "coin",
+      "account": "c:86aaCQXT8uRkyXGXu9k-eNn1kXqV_nNmjTYErKpZ6vE",
+      "read": "(coin.get-balance \"c:86aaCQXT8uRkyXGXu9k-eNn1kXqV_nNmjTYErKpZ6vE\")",
+      "ownership": "KDA held by the identified Cabinet contract account only",
+      "valuation": "Native KDA balance, once",
+      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/cabinet/index.js"
+    },
+    {
+      "id": "brodex",
+      "name": "BroDEX open order collateral",
+      "chain": "2",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "namespace": "n_f6aa9328b19b8bf7e788603bd669dcf549e07575",
+      "pairs": [
+        {
+          "name": "BRO-KDA-M",
+          "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
+          "quote": "coin"
+        },
+        {
+          "name": "BRO-zUSD-M",
+          "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
+          "quote": "n_b742b4e9c600892af545afb408326e82a6c0c6ed.zUSD"
+        },
+        {
+          "name": "BRO-HERON-M",
+          "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
+          "quote": "n_e309f0fa7cf3a13f93a8da5325cdad32790d2070.heron"
+        }
+      ],
+      "read": "Each bro-dex-view-PAIR.get-orderbook, both sides, fully paginated; quote precision read from the quote module",
+      "ownership": "Only remaining open-order collateral: asks deposit base amount; bids deposit floor(amount*limitPrice, quotePrecision). Do not also count balances backing wrappers or counterparties' requested assets",
+      "valuation": "Deposited side only, priced using contemporaneous native Mercatus pool ratios; bid limit price determines deposited quote amount but does not price the base asset",
+      "source": "https://github.com/brothers-DAO/bro-dex/blob/main/pact/bro-dex-core.pact",
+      "verifiedModuleHashes": {
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-KDA-M": "FLUb_895yIUDwt6pP_OCm3YTx3avLAH58YxtqFY7XuM",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-zUSD-M": "0nD0itg4sVT-sTaZawlyh44JSin9kGYqUcU63MNrr0s",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "AoqsO-OtT1Ti9bi8Df2_od66YWAvh3greIIGlz1QDPo"
+      },
+      "sourceCodeSha256": {
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-KDA-M": "f869e7bd542811aa15d332ae5c8963059f3109d587c1c8054d522542f99b044e",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-zUSD-M": "38cadc8278e846b0825268fbdf2f7ff287fae310f106fc04381eb0330a77e6d4",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "d3c58978bf384b2de56e6c72d41c10313662a4c3c3102aaad3aed00326d4d3d4"
+      },
+      "escrowEvidence": "Every collected order is additionally checked against its actual token balance at the core-generated order-account, guarded by the matching ORDER-ACCOUNT capability. The deployed core create-order checks funding; cancel/take transfer from that account. Any underfunding, unexpected guard or reviewed module-hash change fails the observation."
+    }
+  ],
+  "exclusions": [
+    {
+      "component": "LP receipt tokens and LP staking",
+      "reason": "Underlying pool reserves are already counted; counting receipts again would duplicate TVL"
+    },
+    {
+      "component": "BroDEX KDA-zUSD-M",
+      "reason": "Published mainnet configuration marks this market as coming; three named deployed markets are included"
+    },
+    {
+      "component": "BroDEX unused wrapper deposits and fee accounts",
+      "reason": "Registry measures collateral in open orders; freely withdrawable wallet balances and fees are not additionally classified as locked"
+    },
+    {
+      "component": "Kinesis and other bridge custody",
+      "reason": "Not in this registry version: production collateral accounts and native/non-native backing ownership have not been verified. Wrapped tokens deposited into listed pools are valued once at the pool level"
+    },
+    {
+      "component": "BroFinance lending",
+      "reason": "Reviewed public repository is WIP with devnet deployment; no verified mainnet module was identified"
+    },
+    {
+      "component": "Babena and Anedak legacy pools",
+      "reason": "Explicitly outside this initial live-protocol registry; legacy DefiLlama adapters marked them inactive before the fork. This exclusion does not assert their residual on-chain balances are zero"
+    },
+    {
+      "component": "EVM testnet and off-chain custodial exchanges",
+      "reason": "Outside the 20-chain Pact mainnet registry"
+    }
+  ],
+  "failurePolicy": "Missing historical state, failed reads, unpriced nonzero balances, missing expected pools, duplicate ownership keys, or unverified block hashes fail the observation. They never silently become zero. Registry changes require a new version and consistent historical recomputation.",
+  "crossCheck": {
+    "source": "https://api.llama.fi/v2/historicalChainTvl/Kadena",
+    "policy": "Cross-check only. Its long zero series and retired adapters cannot replace native observations."
+  }
+}

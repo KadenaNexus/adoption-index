@@ -1,0 +1,15 @@
+# Code only: datasets, build output and credentials stay out of Git.
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+*.pem
+*.tsbuildinfo
+__pycache__/
+*.pyc
+backend/data/*
+!backend/data/.gitkeep
+output/
+site/.next/
