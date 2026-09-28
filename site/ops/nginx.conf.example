@@ -1,7 +1,7 @@
 # Public website for adoption.kadena.ws -> Next.js (PM2 process kce-web) on localhost.
 # Copy to /etc/nginx/sites-available/adoption.kadena.ws, enable it, test with `sudo nginx -t`,
 # reload, then add HTTPS with `sudo certbot --nginx -d adoption.kadena.ws`.
-# The site reads the backend API over 127.0.0.1:3001 itself; the API does not need a public route.
+# The site reads the backend API on 127.0.0.1 (PORT in backend/.env) itself; the API does not need a public route.
 server {
     listen 80;
     listen [::]:80;
