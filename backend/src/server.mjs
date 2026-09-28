@@ -79,7 +79,9 @@ export function createServer(pool){
   }catch(error){console.error(JSON.stringify({event:'api_error',name:error.name}));send(response,503,{error:'temporarily_unavailable'});}
  });
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+// PM2 loads the script through its own container, so there argv[1] is PM2's file and pm_exec_path is this one.
+export const isEntryPoint=(url,{argv=process.argv,env=process.env}={})=>[argv[1],env.pm_exec_path].some(path=>!!path&&url===pathToFileURL(path).href);
+if(isEntryPoint(import.meta.url)){
  const pool=database(),server=createServer(pool);server.listen(Number(process.env.PORT??3001),process.env.HOST??'127.0.0.1',()=>console.log('KCE index API started'));
  for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(async()=>{await pool.end();process.exit(0)}));
 }

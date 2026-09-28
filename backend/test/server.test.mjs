@@ -1,4 +1,4 @@
-import{test}from'node:test';import assert from'node:assert/strict';import{clientAddress,historyRange,createServer}from'../src/server.mjs';
+import{test}from'node:test';import assert from'node:assert/strict';import{clientAddress,historyRange,createServer,isEntryPoint}from'../src/server.mjs';
 test('only an explicitly trusted local proxy may supply the last appended real IP',()=>{const request=(ip,header)=>({socket:{remoteAddress:ip},headers:{'x-forwarded-for':header}});assert.equal(clientAddress(request('127.0.0.1','9.9.9.9, 1.2.3.4'),true),'1.2.3.4');assert.equal(clientAddress(request('127.0.0.1','9.9.9.9, 1.2.3.4'),false),'127.0.0.1');assert.equal(clientAddress(request('5.6.7.8','9.9.9.9'),true),'5.6.7.8');assert.equal(clientAddress(request('127.0.0.1','bad'),true),'127.0.0.1')});
 
 import {windowFor,completedDay} from '../src/window.mjs';
@@ -21,4 +21,11 @@ test('API excludes obsolete methods and old baselines before reading any score',
   assert.ok(call.sql.includes("payload->>'baselineDay'=$1::text"));
   assert.deepEqual(call.params,[windowFor().fromDay,completedDay(),METHOD_VERSION]);
  }finally{await new Promise(resolve=>server.close(resolve))}
+});
+test('the API starts both from node and under PM2, but not when imported',()=>{
+ const url='file:///srv/kce/backend/src/server.mjs',script='/srv/kce/backend/src/server.mjs';
+ assert.equal(isEntryPoint(url,{argv:['node',script],env:{}}),true,'node src/server.mjs');
+ assert.equal(isEntryPoint(url,{argv:['node','/pm2/lib/ProcessContainerFork.js'],env:{pm_exec_path:script}}),true,'PM2 fork mode');
+ assert.equal(isEntryPoint(url,{argv:['node','/srv/kce/backend/test/server.test.mjs'],env:{}}),false,'imported by a test');
+ assert.equal(isEntryPoint(url,{argv:['node','/pm2/lib/ProcessContainerFork.js'],env:{pm_exec_path:'/srv/kce/backend/src/cli.mjs'}}),false,'imported by another PM2 app');
 });
