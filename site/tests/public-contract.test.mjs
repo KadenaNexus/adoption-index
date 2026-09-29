@@ -4,7 +4,6 @@ import { publicScore, proScore } from '../lib/score-display.ts';
 import { collectionPeriod } from '../lib/preview-state.ts';
 import { publishedIndex } from '../lib/public-index.ts';
 import { billingTerms } from '../lib/billing-terms.ts';
-import { subscriptionConfirmation } from '../emails/subscription-confirmation.ts';
 
 test('public card uses a whole number while Pro preserves one decimal', () => {
   assert.equal(publicScore(88.5), '89');
@@ -42,12 +41,10 @@ test('public adapter accepts the fixed-baseline index with no ceiling, and rejec
   assert.equal(publishedIndex({ ...fixed, score: null }), null);
 });
 
-test('future confirmation uses the checkout terms and safely escapes receipt text', () => {
-  const mail = subscriptionConfirmation({ planId: 'annual', paidThrough: '2027-09-27', receiptId: '<untrusted>' });
-  for (const value of Object.values(billingTerms)) assert.ok(mail.text.includes(value));
-  assert.ok(mail.text.includes('$79/year'));
-  assert.ok(mail.html.includes('&lt;untrusted&gt;'));
-  assert.ok(!mail.html.includes('<untrusted>'));
+test('billing terms say each payment buys a fixed period and nothing renews automatically', () => {
+  assert.match(billingTerms.renewal, /Nothing renews automatically/);
+  assert.match(billingTerms.refund, /non-refundable except where required by law/);
+  assert.ok(!Object.values(billingTerms).some(text => /cancel/i.test(text)));
 });
 
 test('the score card states the position against the baseline instead of a band', async () => {

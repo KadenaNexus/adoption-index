@@ -1,10 +1,10 @@
 export const plans = {
-  monthly: { name: 'Monthly', price: 9, cadence: 'month', label: '$9/month' },
-  annual: { name: 'Annual', price: 79, cadence: 'year', label: '$79/year' },
+  monthly: { name: 'Monthly', price: 9, days: 30 },
+  annual: { name: 'Annual', price: 79, days: 365 },
 } as const;
 export type PlanId = keyof typeof plans;
+// Wallet payments cannot be charged again automatically, so each payment buys a fixed period.
 export const billingTerms = {
   refund: 'Payments are non-refundable except where required by law.',
-  cancellation: 'Cancel anytime to stop the next renewal. Access continues until the end of the paid period.',
+  renewal: 'Each payment buys 30 days (Monthly) or 365 days (Annual) of access. Nothing renews automatically: we email you 7 days and 1 day before it ends.',
 };
-export const planFrom = (value: unknown): PlanId => value === 'annual' ? 'annual' : 'monthly';

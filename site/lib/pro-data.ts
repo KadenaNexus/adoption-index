@@ -1,33 +1,34 @@
+import { backendFetch } from './backend.ts';
 import { BASELINE_LEVEL, COLLECTION_START, NORMALIZATION } from './preview-state.ts';
 import { METRICS, type MetricId } from './metrics.ts';
+import { record, type Payload } from './payload.ts';
 
-// Pro history and breakdown come only from the backend's API-key protected endpoints.
-// Subscriber sign-in and entitlements are not implemented, so the subscriber view is
-// available solely as a local development preview; production never requests Pro data.
+// Pro history and breakdown come from the backend's Pro endpoints, requested with the subscriber's session.
+// Only the home page asks for them, and only after the account shows an active subscription.
 
 export const HISTORY_RANGES = [
   { id: '30d', label: '30D' }, { id: '90d', label: '90D' }, { id: '1y', label: '1Y' }, { id: 'all', label: 'ALL' },
 ] as const;
-export type HistoryRangeId = '30d' | '90d' | 'all';
-// 1Y stays unavailable until a full year of verified history exists.
-export const rangeFrom = (value: unknown): HistoryRangeId => value === '90d' || value === 'all' ? value : '30d';
+export type HistoryRangeId = typeof HISTORY_RANGES[number]['id'];
+const RANGE_IDS: readonly string[] = HISTORY_RANGES.map(r => r.id);
+export const rangeFrom = (value: unknown): HistoryRangeId => typeof value === 'string' && RANGE_IDS.includes(value) ? value as HistoryRangeId : '30d';
+/** 1Y is offered only once the backend reports a full year of verified history. */
+export type AvailableRanges = Record<HistoryRangeId, boolean>;
 
 export type HistoryPoint = { date: string; score: number; windowDays: number };
-export type ProHistory = { range: HistoryRangeId; fromDay: string; throughDay: string; series: HistoryPoint[] };
+export type ProHistory = { range: HistoryRangeId; fromDay: string; throughDay: string; series: HistoryPoint[]; availableRanges: AvailableRanges };
 /** One input against its fixed baseline: current value, baseline in the matching unit, ratio and contribution. */
 export type ProMetric = { id: MetricId; kind: 'average' | 'count'; value: number; windowDays: number; baselineValue: number; baselineRule: 'observed' | 'minimum'; observedBaselineDailyMean: number; ratio: number; index: number; weight: number; contribution: number; weekOverWeek: number | null };
 export type ProBreakdown = { date: string; metrics: ProMetric[]; kdaUsd: number; protocolCount: number | null };
 export type ProData = { history: ProHistory; breakdown: ProBreakdown };
 
-type Payload = Record<string, unknown>;
-const record = (value: unknown): Payload | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Payload : null;
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const isDay = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && value >= COLLECTION_START;
 const fixedStart = (p: Payload) => p.collectionStart === COLLECTION_START && p.summaryRetention === 'permanent' && p.normalization === NORMALIZATION;
 
 export function parseHistory(payload: unknown): ProHistory | null {
   const p = record(payload);
-  if (!p || !fixedStart(p) || p.baselineLevel !== BASELINE_LEVEL || !['30d', '90d', 'all'].includes(String(p.range)) || !isDay(p.fromDay) || !isDay(p.throughDay) || !Array.isArray(p.series)) return null;
+  if (!p || !fixedStart(p) || p.baselineLevel !== BASELINE_LEVEL || !RANGE_IDS.includes(String(p.range)) || !isDay(p.fromDay) || !isDay(p.throughDay) || !Array.isArray(p.series)) return null;
   const series: HistoryPoint[] = [];
   for (const item of p.series) {
     const row = record(item);
@@ -37,7 +38,10 @@ export function parseHistory(payload: unknown): ProHistory | null {
     series.push({ date: row.date, score: row.score, windowDays: Number(row.windowDays) });
   }
   if (!series.length || series[0].date < p.fromDay || series[series.length - 1].date !== p.throughDay) return null;
-  return { range: p.range as HistoryRangeId, fromDay: p.fromDay, throughDay: p.throughDay, series };
+  const range = p.range as HistoryRangeId, offered = record(p.availableRanges);
+  // The shorter ranges always exist; 1Y needs the backend's explicit `true` (or a 1Y reply itself).
+  const availableRanges: AvailableRanges = { '30d': true, '90d': true, all: true, '1y': range === '1y' || offered?.['1y'] === true };
+  return { range, fromDay: p.fromDay, throughDay: p.throughDay, series, availableRanges };
 }
 
 export function parseBreakdown(payload: unknown, protocolCount: number | null = null): ProBreakdown | null {
@@ -68,29 +72,20 @@ export function protocolCount(registry: unknown): number | null {
   return ids.length ? new Set(ids).size : null;
 }
 
-type Env = Record<string, string | undefined>;
-// Never in a production build or server: there is no subscriber authentication yet. The literal
-// process.env.NODE_ENV check is inlined by the production build, so no runtime variable can reopen it.
-export function proPreviewEnabled(env: Env = process.env): boolean {
-  if (process.env.NODE_ENV === 'production') return false;
-  return env.NODE_ENV !== 'production' && env.KCE_PRO_PREVIEW === '1' && !!env.KCE_API_ORIGIN && (env.KCE_API_KEY?.length ?? 0) >= 32;
-}
-
-async function getJson(origin: string, path: string, key?: string): Promise<unknown> {
-  const url = new URL(path, origin);
-  if (!['http:', 'https:'].includes(url.protocol)) return null;
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000), headers: key ? { 'X-API-Key': key } : {} });
-  return response.ok ? response.json() : null;
-}
-
-export async function getProPreview(range: HistoryRangeId, env: Env = process.env): Promise<ProData | null> {
-  if (!proPreviewEnabled(env)) return null;
-  const origin = env.KCE_API_ORIGIN!, key = env.KCE_API_KEY!;
-  try {
-    const [history, breakdown, registry] = await Promise.all([
-      getJson(origin, `/index/history?range=${range}`, key), getJson(origin, '/metrics/breakdown', key), getJson(origin, '/protocols'),
-    ]);
-    const parsedHistory = parseHistory(history), parsedBreakdown = parseBreakdown(breakdown, protocolCount(registry));
-    return parsedHistory && parsedBreakdown && parsedHistory.throughDay === parsedBreakdown.date ? { history: parsedHistory, breakdown: parsedBreakdown } : null;
-  } catch { return null; }
+type Fetched = { status: number; data: unknown };
+/**
+ * History (for `range`), breakdown and the protocol registry for a signed-in subscriber, or null if any part is
+ * missing or inconsistent. Without a session nothing is requested. A 1Y request before a full year of history
+ * exists falls back to 30D.
+ */
+export async function getProData(range: HistoryRangeId, sessionToken: string | null, clientIp: string): Promise<ProData | null> {
+  if (!sessionToken) return null;
+  const options = { session: sessionToken, clientIp, timeoutMs: 5000 };
+  const history = (selected: HistoryRangeId): Promise<Fetched> => backendFetch(`/index/history?range=${selected}`, options);
+  const [first, breakdown, registry] = await Promise.all([history(range), backendFetch('/metrics/breakdown', options), backendFetch('/protocols', { clientIp, timeoutMs: 5000 })]);
+  const notYet = range !== '30d' && first.status === 400 && record(first.data)?.error === 'range_not_available';
+  const reply = notYet ? await history('30d') : first;
+  if (reply.status !== 200 || breakdown.status !== 200) return null;
+  const parsedHistory = parseHistory(reply.data), parsedBreakdown = parseBreakdown(breakdown.data, registry.status === 200 ? protocolCount(registry.data) : null);
+  return parsedHistory && parsedBreakdown && parsedHistory.throughDay === parsedBreakdown.date ? { history: parsedHistory, breakdown: parsedBreakdown } : null;
 }

@@ -1,5 +1,15 @@
-import{test}from'node:test';import assert from'node:assert/strict';import{clientAddress,historyRange,createServer,isEntryPoint}from'../src/server.mjs';
+import{test}from'node:test';import assert from'node:assert/strict';import{clientAddress,historyRange,createServer,isEntryPoint}from'../src/server.mjs';import{ipGroup}from'../src/http.mjs';
 test('only an explicitly trusted local proxy may supply the last appended real IP',()=>{const request=(ip,header)=>({socket:{remoteAddress:ip},headers:{'x-forwarded-for':header}});assert.equal(clientAddress(request('127.0.0.1','9.9.9.9, 1.2.3.4'),true),'1.2.3.4');assert.equal(clientAddress(request('127.0.0.1','9.9.9.9, 1.2.3.4'),false),'127.0.0.1');assert.equal(clientAddress(request('5.6.7.8','9.9.9.9'),true),'5.6.7.8');assert.equal(clientAddress(request('127.0.0.1','bad'),true),'127.0.0.1')});
+test('rate-limit keys: IPv4 as is, IPv4-mapped IPv6 as IPv4, other IPv6 by its /64',()=>{
+ for(const [ip,key] of [['203.0.113.7','203.0.113.7'],['2001:db8:1:2::1','2001:db8:1:2::/64'],['2001:DB8:1:2:ffff:ffff:ffff:ffff','2001:db8:1:2::/64'],['2001:db8::1','2001:db8:0:0::/64'],
+  ['2001:0db8:0001:0002:0003:0004:0005:0006','2001:db8:1:2::/64'],['::1','0:0:0:0::/64'],['fe80::1%eth0','fe80:0:0:0::/64'],['::ffff:203.0.113.7','203.0.113.7'],['::ffff:cb00:7107','203.0.113.7'],
+  ['0:0:0:0:0:ffff:203.0.113.7','203.0.113.7'],['64:ff9b::203.0.113.7','64:ff9b:0:0::/64']])assert.equal(ipGroup(ip),key,ip);
+ for(const bad of ['bad','',undefined,null,42,'1.2.3.4.5','2001:db8::1::2'])assert.equal(ipGroup(bad),null,String(bad));
+ const request=(ip,header)=>({socket:{remoteAddress:ip},headers:{'x-forwarded-for':header}});
+ assert.equal(clientAddress(request('2001:db8:1:2:3:4:5:6')),'2001:db8:1:2::/64');assert.equal(clientAddress(request('::ffff:198.51.100.4')),'198.51.100.4');
+ assert.equal(clientAddress(request('::1','9.9.9.9, 2001:db8:5:6::9'),true),'2001:db8:5:6::/64');assert.equal(clientAddress(request('::1','bad'),true),'0:0:0:0::/64');
+ assert.equal(clientAddress({socket:{},headers:{}}),'unknown');
+});
 
 import {windowFor,completedDay} from '../src/window.mjs';
 import {METHOD_VERSION} from '../src/scoring.mjs';

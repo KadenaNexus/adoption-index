@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { publicSummary, publishedIndex } from '../lib/public-index.ts';
-import { getProPreview, parseBreakdown, parseHistory, proPreviewEnabled, rangeFrom } from '../lib/pro-data.ts';
+import { getProData, parseBreakdown, parseHistory, rangeFrom } from '../lib/pro-data.ts';
+import { SITE_KEY, TOKEN, stubBackend } from './accounts-stub.mjs';
 import { areaPath, axisDays, nearestIndex, plotPoints, scaleFor, yFor } from '../lib/chart-geometry.ts';
 import { baselineComparison, formatChange, formatRatio, ratioTone } from '../lib/metrics.ts';
 
@@ -11,7 +12,6 @@ const baseline = { fromDay: '2026-06-29', throughDay: '2026-07-28', days: 30, le
   addresses: baselineMetric('average', 374.9, 374.9), contracts: baselineMetric('count', 7, 0.4667, 'minimum'),
   tvl: baselineMetric('average', 13222255.08, 13222255.08), hashrate: baselineMetric('average', 15.22, 15.22), commits: baselineMetric('count', 7, 0.8, 'minimum') } };
 const today = (score, extra = {}) => ({ state: 'current', date: '2026-09-26', score, ...meta, baseline, ...extra });
-const key = 'k'.repeat(40);
 const history = { ...meta, baselineLevel: 50, range: '30d', fromDay: '2026-09-24', throughDay: '2026-09-26', series: [
   { date: '2026-09-24', score: 43.4, windowDays: 7 }, { date: '2026-09-25', score: 43.7, windowDays: 7 }, { date: '2026-09-26', score: 45.1, windowDays: 7 }] };
 const metric = (id, weight, extra = {}) => ({ id, kind: ['contracts', 'commits'].includes(id) ? 'count' : 'average', rawValue: 10, windowDays: 7, baselineValue: 8,
@@ -27,22 +27,102 @@ test('free visitors never receive the Pro-only 7-day and 30-day change', () => {
   assert.ok(!JSON.stringify(summary).includes('21.3'));
 });
 
-test('subscriber preview is closed in production even when configured', async () => {
-  assert.equal(proPreviewEnabled({ NODE_ENV: 'production', KCE_PRO_PREVIEW: '1', KCE_API_KEY: key, KCE_API_ORIGIN: 'http://127.0.0.1:3001' }), false);
-  assert.equal(proPreviewEnabled({ NODE_ENV: 'development', KCE_PRO_PREVIEW: '1', KCE_API_KEY: key, KCE_API_ORIGIN: 'http://127.0.0.1:3001' }), true);
-  assert.equal(proPreviewEnabled({ NODE_ENV: 'development', KCE_API_KEY: key, KCE_API_ORIGIN: 'http://127.0.0.1:3001' }), false);
-  assert.equal(proPreviewEnabled({ NODE_ENV: 'development', KCE_PRO_PREVIEW: '1', KCE_API_KEY: 'short', KCE_API_ORIGIN: 'http://127.0.0.1:3001' }), false);
-  const original = globalThis.fetch;
-  globalThis.fetch = () => { throw new Error('production must not request Pro data'); };
-  try { assert.equal(await getProPreview('30d', { NODE_ENV: 'production', KCE_PRO_PREVIEW: '1', KCE_API_KEY: key, KCE_API_ORIGIN: 'http://127.0.0.1:3001' }), null); }
-  finally { globalThis.fetch = original; }
+test('without a session no Pro data is requested at all', async () => {
+  const original = globalThis.fetch, origin = process.env.KCE_API_ORIGIN, key = process.env.KCE_SITE_KEY;
+  let calls = 0;
+  globalThis.fetch = () => { calls++; throw new Error('a free visitor must not trigger a Pro request'); };
+  process.env.KCE_API_ORIGIN = 'http://127.0.0.1:3001'; process.env.KCE_SITE_KEY = SITE_KEY;
+  try {
+    for (const range of ['30d', '90d', '1y', 'all']) assert.equal(await getProData(range, null, '203.0.113.7'), null);
+    assert.equal(calls, 0);
+  } finally {
+    globalThis.fetch = original;
+    if (origin === undefined) delete process.env.KCE_API_ORIGIN; else process.env.KCE_API_ORIGIN = origin;
+    if (key === undefined) delete process.env.KCE_SITE_KEY; else process.env.KCE_SITE_KEY = key;
+  }
 });
 
-test('history ranges: 1Y and unknown values fall back to 30D', () => {
+test('history ranges: 1Y is a real range now; unknown values fall back to 30D', () => {
   assert.equal(rangeFrom('90d'), '90d');
   assert.equal(rangeFrom('all'), 'all');
-  assert.equal(rangeFrom('1y'), '30d');
+  assert.equal(rangeFrom('1y'), '1y');
+  assert.equal(rangeFrom('2y'), '30d');
+  assert.equal(rangeFrom(['1y']), '30d');
   assert.equal(rangeFrom(undefined), '30d');
+});
+
+test('1Y is offered only when the backend says a full year exists', () => {
+  assert.deepEqual(parseHistory({ ...history, availableRanges: { '30d': true, '90d': true, all: true, '1y': false } }).availableRanges, { '30d': true, '90d': true, all: true, '1y': false });
+  assert.equal(parseHistory({ ...history, availableRanges: { '30d': true, '90d': true, all: true, '1y': true } }).availableRanges['1y'], true);
+  assert.equal(parseHistory(history).availableRanges['1y'], false, 'missing availableRanges keeps 1Y off');
+  assert.equal(parseHistory({ ...history, availableRanges: { '1y': 'yes' } }).availableRanges['1y'], false, 'only an explicit true counts');
+  const year = parseHistory({ ...history, range: '1y', availableRanges: { '30d': true, '90d': true, all: true, '1y': true } });
+  assert.equal(year.range, '1y');
+  assert.equal(year.availableRanges['1y'], true);
+  assert.equal(parseHistory({ ...history, range: '2y' }), null);
+});
+
+const proBackend = (overrides = {}) => stubBackend(({ path }) => {
+  if (overrides[path]) return overrides[path];
+  if (path.startsWith('/index/history')) return { json: { ...history, range: new URL(path, 'http://x').searchParams.get('range'), availableRanges: { '30d': true, '90d': true, all: true, '1y': false } } };
+  if (path === '/metrics/breakdown') return { json: breakdown };
+  if (path === '/protocols') return { json: { protocols: [{ id: 'kdswap-amm', status: 'included' }] } };
+  return { status: 404, json: { error: 'not_found' } };
+});
+
+test('subscriber Pro data is requested with the session and the visitor IP', async () => {
+  const backend = await proBackend();
+  try {
+    const data = await getProData('90d', TOKEN, '203.0.113.7');
+    assert.equal(data.history.range, '90d');
+    assert.equal(data.breakdown.protocolCount, 1);
+    const pro = backend.requests.filter(r => r.path !== '/protocols');
+    assert.deepEqual(pro.map(r => r.path).sort(), ['/index/history?range=90d', '/metrics/breakdown']);
+    for (const r of backend.requests) {
+      assert.equal(r.headers['x-kce-site-key'], SITE_KEY);
+      assert.equal(r.headers['x-kce-client-ip'], '203.0.113.7');
+    }
+    for (const r of pro) assert.equal(r.headers['x-kce-session'], TOKEN);
+    assert.equal(backend.requests.find(r => r.path === '/protocols').headers['x-kce-session'], undefined, 'the public registry needs no session');
+  } finally { await backend.close(); }
+});
+
+test('1Y before a full year of history falls back to 30D', async () => {
+  const backend = await proBackend({ '/index/history?range=1y': { status: 400, json: { error: 'range_not_available', range: '1y', requiredDays: 365, availableDays: 93 } } });
+  try {
+    const data = await getProData('1y', TOKEN, '203.0.113.7');
+    assert.equal(data.history.range, '30d');
+    assert.equal(data.history.availableRanges['1y'], false);
+    assert.deepEqual(backend.requests.filter(r => r.path.startsWith('/index/history')).map(r => r.path), ['/index/history?range=1y', '/index/history?range=30d']);
+  } finally { await backend.close(); }
+});
+
+test('1Y is served once the backend has a full year', async () => {
+  const backend = await proBackend({ '/index/history?range=1y': { json: { ...history, range: '1y', availableRanges: { '30d': true, '90d': true, all: true, '1y': true } } } });
+  try {
+    const data = await getProData('1y', TOKEN, '203.0.113.7');
+    assert.equal(data.history.range, '1y');
+    assert.equal(data.history.availableRanges['1y'], true);
+  } finally { await backend.close(); }
+});
+
+test('Pro data is null when the subscription is refused, a part is missing or the days disagree', async () => {
+  for (const overrides of [
+    { '/index/history?range=30d': { status: 403, json: { error: 'subscription_required' } } },
+    { '/metrics/breakdown': { status: 401, json: { error: 'session_required' } } },
+    { '/metrics/breakdown': { json: { ...breakdown, date: '2026-09-25' } } },
+    { '/index/history?range=90d': { status: 400, json: { error: 'invalid_range' } } },
+    { '/index/history?range=30d': { status: 400, json: { error: 'range_not_available' } } },
+  ]) {
+    const backend = await proBackend(overrides);
+    try {
+      const range = Object.keys(overrides)[0].includes('90d') ? '90d' : '30d';
+      assert.equal(await getProData(range, TOKEN, '203.0.113.7'), null, JSON.stringify(overrides));
+    } finally { await backend.close(); }
+  }
+  const backend = await proBackend({ '/protocols': { status: 503, json: { error: 'temporarily_unavailable' } } });
+  try { assert.equal((await getProData('30d', TOKEN, '203.0.113.7')).breakdown.protocolCount, null, 'the registry is optional'); }
+  finally { await backend.close(); }
 });
 
 test('history payloads must be ordered, fixed-start and fixed-baseline, with no ceiling', () => {

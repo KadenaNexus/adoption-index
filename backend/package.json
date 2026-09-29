@@ -12,15 +12,18 @@
     "migrate-method": "node --env-file-if-exists=.env src/migrate.mjs --method",
     "backfill": "node --env-file-if-exists=.env src/cli.mjs backfill",
     "daily": "node --env-file-if-exists=.env src/cli.mjs daily",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
     "index": "node --env-file-if-exists=.env src/cli.mjs index",
     "github": "node --env-file-if-exists=.env src/cli.mjs github",
     "compute": "node --env-file-if-exists=.env src/cli.mjs compute",
     "status": "node --env-file-if-exists=.env src/cli.mjs status",
     "scheduler": "node --env-file-if-exists=.env src/cli.mjs scheduler",
-    "report": "node --env-file-if-exists=.env src/cli.mjs report"
+    "report": "node --env-file-if-exists=.env src/cli.mjs report",
+    "check-config": "node --env-file-if-exists=.env -e \"import('./src/config.mjs').then(m=>{m.accountsConfig();console.log('Account and payment settings are valid.')}).catch(e=>{console.error(e.message);process.exitCode=1})\"",
+    "worker": "node --env-file-if-exists=.env src/cli.mjs worker"
   },
   "dependencies": {
+    "@noble/curves": "2.0.1",
     "@noble/hashes": "^2.0.1",
     "pg": "8.23.0"
   }

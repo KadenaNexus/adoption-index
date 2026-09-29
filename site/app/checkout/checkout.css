@@ -1,0 +1,108 @@
+/* Checkout and wallets. Builds on the tokens and .checkout-* classes in globals.css; every class here is pay-*. */
+.pay-layout { align-items: start; }
+.pay-main { display: grid; gap: 28px; min-width: 0; }
+.pay-section > h2 { margin-bottom: 14px; }
+.pay-summary .checkout-price { margin-bottom: 0; }
+.pay-term { margin-top: 2px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.pay-signed-in { margin-bottom: 14px; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.pay-signed-in b { color: var(--ink); }
+.pay-testnet { padding: 8px 12px; border: 1px solid #fed7aa; border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: 13px; text-align: center; letter-spacing: .02em; }
+
+.pay-notice { padding: 22px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.pay-notice h3 { font-size: 16px; font-weight: 700; }
+.pay-notice p { margin-top: 8px; color: var(--muted); }
+.pay-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 16px; }
+
+.pay { display: grid; gap: 18px; min-width: 0; }
+.pay fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.pay legend { padding: 0; margin-bottom: 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.pay input[type="radio"] { flex-shrink: 0; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--crimson); }
+.pay-tokens { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.pay-token { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.pay-token:has(input:checked) { border-color: var(--crimson); box-shadow: 0 0 0 1px var(--crimson); }
+.pay-token:has(input:focus-visible) { outline: 2px solid var(--crimson); outline-offset: 2px; }
+.pay fieldset:disabled .pay-token { opacity: .6; cursor: not-allowed; }
+.pay-token > span { display: flex; flex-direction: column; min-width: 0; }
+.pay-token small { color: var(--muted); font-size: 13px; }
+.pay-badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #fdf2f4; color: var(--crimson-ink); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 2px; }
+
+.pay-steps { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+.pay-step { display: inline-flex; align-items: center; gap: 6px; }
+.pay-step-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; font-weight: 700; }
+.pay-step.done { color: var(--green-ink); }
+.pay-step.done .pay-step-mark { border-color: var(--green); background: var(--green-soft); }
+.pay-step.current { color: var(--ink); font-weight: 700; }
+.pay-step.current .pay-step-mark { border-color: var(--crimson); background: var(--crimson); color: #fff; }
+
+.pay-warnings { display: grid; gap: 8px; margin: 0; padding: 14px 16px; list-style: none; background: #fdf3f4; border-left: 3px solid var(--crimson); border-radius: 0 10px 10px 0; font-size: 13px; color: var(--ink-2); }
+.pay-address-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.pay-address-row > span { font-weight: 700; }
+.pay code, .pay-address { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.pay-address { overflow-wrap: anywhere; word-break: break-all; color: var(--ink); }
+.pay-copy { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--crimson-ink); font-size: 12px; font-weight: 700; cursor: pointer; }
+.pay-copy:hover { border-color: var(--crimson); }
+
+.pay-connect h3, .pay-review h3 { margin-bottom: 10px; font-size: 14px; font-weight: 700; }
+.pay-wallets { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.pay-wallet { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; }
+.pay-wallet:hover:not(:disabled) { border-color: var(--crimson); }
+.pay-wallet:disabled { opacity: .55; cursor: not-allowed; }
+.pay-wallet.primary { border-color: var(--crimson); box-shadow: 0 0 0 1px var(--crimson); }
+.pay-wallet > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.pay-wallet small { color: var(--muted); font-size: 12px; }
+.pay-wallet-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px; background: var(--badge); color: var(--ink-2); font-size: 12px; font-weight: 700; object-fit: contain; }
+.pay-wallet-icon.wc { background: #3b99fc; color: #fff; font-size: 11px; }
+.pay-hint { font-size: 13px; color: var(--muted); }
+.pay-connect .pay-hint, .pay-cancel { margin-top: 10px; }
+.pay-connected { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.pay-connected p { overflow-wrap: anywhere; }
+.pay-connected .pay-badge { background: var(--green-soft); color: var(--green-ink); }
+.pay-link-button { padding: 0; border: 0; background: none; color: var(--crimson); font-weight: 700; font-size: 14px; cursor: pointer; }
+.pay-link-button:hover { text-decoration: underline; }
+
+/* Empty, the live region stays in the accessibility tree (so its next message is announced) but takes no space. */
+.pay-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.pay-status { font-size: 14px; font-weight: 700; color: var(--ink-2); }
+.pay-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.pay-message.pay-error { border-color: rgba(224, 71, 76, .35); background: var(--red-soft); color: var(--red-ink); }
+.pay-message a { color: inherit; font-weight: 700; text-decoration: underline; }
+.pay-message .pay-link-button { margin-top: 8px; }
+
+.pay-review { padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.pay-facts { display: grid; gap: 8px; margin: 0; }
+.pay-facts > div { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.pay-facts dt { color: var(--muted); }
+.pay-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.pay-review .pay-hint { margin-top: 12px; }
+.pay-send { width: 100%; margin-top: 16px; }
+.pay-tx { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+.pay-fallback { border-top: 1px solid var(--line); padding-top: 14px; }
+.pay-fallback summary { cursor: pointer; color: var(--crimson); font-size: 14px; font-weight: 700; }
+.pay-fallback form { display: grid; gap: 8px; margin-top: 12px; }
+.pay-fallback label { font-size: 13px; font-weight: 700; }
+.pay-hash-row { display: flex; flex-wrap: wrap; gap: 10px; }
+/* 16px: iOS Safari zooms the page into any smaller input when it is focused. */
+.pay-hash-row input { flex: 1 1 260px; min-width: 0; min-height: 42px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 16px; }
+.pay-hash-row input:focus-visible { outline: 2px solid var(--crimson); outline-offset: 1px; }
+.pay-hash-row input[aria-invalid="true"] { border-color: var(--red-ink); }
+.pay-field-error { font-size: 13px; font-weight: 700; color: var(--red-ink); }
+
+.pay-success { padding: 24px; background: var(--green-soft); border: 1px solid rgba(16, 185, 129, .35); border-radius: 12px; }
+.pay-success h3 { font-size: 18px; font-weight: 700; color: var(--green-ink); }
+.pay-success p { margin-top: 8px; color: var(--ink-2); }
+
+@media (max-width: 760px) {
+  /* The summary (what you buy) comes before the payment steps on a phone. */
+  .pay-summary { order: -1; }
+}
+@media (max-width: 400px) {
+  /* A full 42-character address fits on one line at a 375 px width. */
+  .pay .pay-address { font-size: 11.5px; }
+}
+@media (max-width: 560px) {
+  .pay-notice, .pay-review, .pay-success { padding: 16px; }
+  .pay-wallets { grid-template-columns: 1fr; }
+  .pay-facts > div { grid-template-columns: 1fr; gap: 2px; }
+  .pay-hash-row .button { flex: 1 1 100%; }
+}

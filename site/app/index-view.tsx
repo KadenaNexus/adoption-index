@@ -1,20 +1,23 @@
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 import type { PublicIndex } from '../db/store';
-import { publicScore } from '../lib/score-display';
+import { proScore, publicScore } from '../lib/score-display';
 import { billingTerms } from '../lib/billing-terms';
 import { areaPath, linePath } from '../lib/chart-geometry';
 import { BASELINE_LEVEL, METRICS, baselineComparison, formatAmount, formatChange, formatCount, formatDay, formatHashrate, formatKda, formatRatio, formatUsd, ratioTone, type Change } from '../lib/metrics';
-import { HISTORY_RANGES, type HistoryRangeId, type ProBreakdown, type ProData, type ProMetric } from '../lib/pro-data';
+import { HISTORY_RANGES, type AvailableRanges, type HistoryRangeId, type ProBreakdown, type ProData, type ProMetric } from '../lib/pro-data';
+import { getSessionToken } from '../lib/session';
 import ChartGrid from './chart-grid';
 import HistoryChart from './history-chart';
 import LockIcon from './lock-icon';
 import PlanPicker from './plan-picker';
 
-export function SiteHeader() {
+// Decided by the cookie alone (no backend call); pages that need the account itself ask the backend.
+export async function SiteHeader() {
+  const signedIn = !!await getSessionToken();
   return <header className="site-header">
     <Link className="brand" href="/">kadena.ws</Link>
-    <Link className="signin-button" href="/signin">Sign in</Link>
+    {signedIn ? <Link className="signin-button" href="/account">Account</Link> : <Link className="signin-button" href="/signin">Sign in</Link>}
   </header>;
 }
 
@@ -45,7 +48,8 @@ function WeekChange({ change, suffix }: { change: Change; suffix: string }) {
   return <span className={`week-change change-${change.direction}`}>{change.arrow && <><span aria-hidden="true">{change.arrow} </span><span className="sr-only">{change.direction === 'up' ? 'up ' : 'down '}</span></>}{change.magnitude}% {suffix}</span>;
 }
 
-function ScoreCard({ index, subscriber }: { index: PublicIndex; subscriber: boolean }) {
+// Subscribers see the composite to one decimal (from their history) when it is the same day as the public reading.
+function ScoreCard({ index, subscriber, precise = null }: { index: PublicIndex; subscriber: boolean; precise?: number | null }) {
   const available = index.score !== null;
   // No peak-based bands: the pill states the position against the fixed baseline (50).
   const comparison = available ? baselineComparison(Math.round(index.score!)) : null;
@@ -54,7 +58,7 @@ function ScoreCard({ index, subscriber }: { index: PublicIndex; subscriber: bool
   const note = index.state === 'stale' && index.day ? `Reading for ${formatDay(index.day)} (UTC). The next update is awaiting validation.` : available ? null : index.message;
   return <section className="score-card" aria-labelledby="score-label">
     <p className="score-label" id="score-label">{index.state === 'stale' ? 'Last verified index' : "Today's index"}</p>
-    <p className="score"><span className={`score-value ${available ? '' : 'pending'}`}>{available ? publicScore(index.score!) : '—'}</span></p>
+    <p className="score"><span className={`score-value ${available ? '' : 'pending'}`}>{available ? precise !== null ? proScore(precise) : publicScore(index.score!) : '—'}</span></p>
     <p className={`baseline-pill tone-${tone}`}>{status}</p>
     <p className="baseline-note">Baseline = {BASELINE_LEVEL}: average activity from 29 Jun to 28 Jul 2026. No upper limit.</p>
     {subscriber
@@ -79,9 +83,10 @@ function LockOverlay({ title, text }: { title: string; text: string }) {
 // Decorative shape behind the blur. It is not index data; Pro data is never sent to free visitors.
 const TEASER = [24, 19, 22, 31, 27, 35, 39, 43, 38, 45, 43, 50, 47].map((score, i, all) => ({ date: '', score, x: i / (all.length - 1) * 100, y: 100 - score }));
 
-function RangeToggle({ active, basePath }: { active?: HistoryRangeId; basePath?: string }) {
+// 1Y becomes a link only when the backend reports a full year of verified history.
+function RangeToggle({ active, basePath, available }: { active?: HistoryRangeId; basePath?: string; available?: AvailableRanges }) {
   return <nav className="range-toggle" aria-label="History range">
-    {HISTORY_RANGES.map(r => r.id === '1y' || !basePath
+    {HISTORY_RANGES.map(r => !basePath || available?.[r.id] !== true
       ? <span key={r.id} className={`range-btn ${!basePath && r.id === '30d' ? 'active' : ''}`} {...(basePath ? { 'aria-disabled': true, title: 'Available once a full year of verified history exists' } : {})}>{r.label}</span>
       : <Link key={r.id} href={`${basePath}?range=${r.id}`} scroll={false} className={`range-btn ${active === r.id ? 'active' : ''}`} aria-current={active === r.id ? 'true' : undefined}>{r.label}</Link>)}
   </nav>;
@@ -148,27 +153,26 @@ function AccessPanel() {
     <h2 id="access-title">Get Full Access</h2>
     <p className="access-lead">Historical charts, index breakdown, 7-day and 30-day change, email alerts when the index crosses your target.</p>
     <PlanPicker/>
-    <p className="access-terms">{billingTerms.refund} Cancel anytime to stop the next renewal.</p>
+    <p className="access-terms">One payment buys 30 or 365 days. Nothing renews automatically. {billingTerms.refund}</p>
   </section>;
 }
 
 export type Subscriber = { data: ProData | null; range: HistoryRangeId; basePath: string };
 
-export default function IndexView({ index, subscriber }: { index: PublicIndex; subscriber?: Subscriber }) {
-  const unavailable = <div className="pro-unavailable">Subscriber data could not be loaded from the backend API.</div>;
+export default function IndexView({ index, subscriber, notice }: { index: PublicIndex; subscriber?: Subscriber; notice?: ReactNode }) {
+  const unavailable = <div className="pro-unavailable">Pro data could not be loaded just now. Please reload the page in a minute.</div>;
   const series = subscriber?.data?.history.series ?? [];
   const lastDay = series.length ? series[series.length - 1].date : null;
   const endLabel = index.state === 'ready' && lastDay === index.day ? 'Today' : lastDay ? formatDay(lastDay, false) : '';
-  const banner = subscriber && <p className="preview-banner">Subscriber preview · local development only · not available on the public site</p>;
-  return <PageShell day={index.day} banner={banner}>
+  return <PageShell day={index.day} banner={notice}>
     <section className="hero">
       <h1>Kadena Community Edition Adoption Index</h1>
       <p>One number that tells you if Kadena Community Edition is being adopted. Updated daily.</p>
     </section>
-    <ScoreCard index={index} subscriber={!!subscriber}/>
+    <ScoreCard index={index} subscriber={!!subscriber} precise={subscriber?.data && lastDay === index.day ? series[series.length - 1].score : null}/>
     <section className="section" aria-labelledby="trend-title">
       <h2 id="trend-title">Historical Trend</h2>
-      {!subscriber ? <LockedHistory/> : subscriber.data ? <div className="chart-card"><div className="chart-head"><span className="chart-legend"><i aria-hidden="true"/>Baseline ({BASELINE_LEVEL})</span><RangeToggle active={subscriber.range} basePath={subscriber.basePath}/></div><HistoryChart series={series} endLabel={endLabel}/></div> : unavailable}
+      {!subscriber ? <LockedHistory/> : subscriber.data ? <div className="chart-card"><div className="chart-head"><span className="chart-legend"><i aria-hidden="true"/>Baseline ({BASELINE_LEVEL})</span><RangeToggle active={subscriber.range} basePath={subscriber.basePath} available={subscriber.data.history.availableRanges}/></div><HistoryChart series={series} endLabel={endLabel}/></div> : unavailable}
     </section>
     <section className="section" aria-labelledby="inside-title">
       <h2 id="inside-title">What&apos;s Inside the Index</h2>

@@ -124,3 +124,34 @@ CREATE TABLE IF NOT EXISTS method_migrations(
  migrated_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO schema_migrations(version) VALUES(6) ON CONFLICT DO NOTHING;
+
+-- v7: accounts, sessions, subscriptions and payments (Milestone 2). Nothing above changes.
+-- Login and session tokens are stored only as SHA-256 hex. Login emails are sent at request time and never stored.
+CREATE TABLE IF NOT EXISTS users(id bigserial PRIMARY KEY, email text UNIQUE NOT NULL CHECK(email=lower(email) AND length(email) BETWEEN 3 AND 254), created_at timestamptz NOT NULL DEFAULT now(), last_login_at timestamptz);
+-- Each sign-in email carries a link (token_hash) and a 6-digit code (code_hash = SHA-256 of email:code), both single-use; at most 5 wrong codes.
+CREATE TABLE IF NOT EXISTS login_tokens(token_hash text PRIMARY KEY, email text NOT NULL, code_hash text, attempts integer NOT NULL DEFAULT 0, next_path text, request_ip text, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, used_at timestamptz);
+CREATE INDEX IF NOT EXISTS login_tokens_by_email ON login_tokens(email,created_at);
+CREATE INDEX IF NOT EXISTS login_tokens_by_ip ON login_tokens(request_ip,created_at);
+-- One row per wrong sign-in code; at most 10 per email per 24 hours, so a 6-digit code cannot be guessed over time.
+CREATE TABLE IF NOT EXISTS login_code_failures(email text NOT NULL, at timestamptz NOT NULL);
+CREATE INDEX IF NOT EXISTS login_code_failures_by_email ON login_code_failures(email,at);
+CREATE TABLE IF NOT EXISTS sessions(token_hash text PRIMARY KEY, user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, last_seen_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz);
+CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS wallet_challenges(nonce text PRIMARY KEY, user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE, address text NOT NULL CHECK(address ~ '^0x[0-9a-f]{40}$'), message text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, used_at timestamptz);
+CREATE TABLE IF NOT EXISTS wallets(address text PRIMARY KEY CHECK(address ~ '^0x[0-9a-f]{40}$'), user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE, message text NOT NULL, signature text NOT NULL, linked_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS wallets_by_user ON wallets(user_id);
+CREATE TABLE IF NOT EXISTS subscriptions(user_id bigint PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, plan text NOT NULL, started_at timestamptz NOT NULL, expires_at timestamptz NOT NULL CHECK(expires_at>started_at), updated_at timestamptz NOT NULL DEFAULT now());
+-- rail 'evm': network bsc|bsc-testnet, chain '56'|'97', tx_hash 0x + 64 lowercase hex, token_address = the token contract, decimals 18.
+-- Amounts are integers in token base units.
+CREATE TABLE IF NOT EXISTS payment_intents(id bigserial PRIMARY KEY, user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE, rail text NOT NULL CHECK(rail IN ('evm')), network text NOT NULL, chain text NOT NULL, plan text NOT NULL, token text NOT NULL, token_address text NOT NULL, decimals integer NOT NULL CHECK(decimals BETWEEN 0 AND 36), amount numeric(78,0) NOT NULL CHECK(amount>0), pay_to text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, payment_id bigint);
+CREATE INDEX IF NOT EXISTS payment_intents_by_user ON payment_intents(user_id,created_at);
+CREATE TABLE IF NOT EXISTS payments(id bigserial PRIMARY KEY, rail text NOT NULL CHECK(rail IN ('evm')), network text NOT NULL, chain text NOT NULL, tx_hash text NOT NULL CHECK(tx_hash ~ '^0x[0-9a-f]{64}$'), user_id bigint NOT NULL REFERENCES users(id), intent_id bigint REFERENCES payment_intents(id), from_address text NOT NULL, to_address text NOT NULL, token text NOT NULL, token_address text NOT NULL, decimals integer NOT NULL CHECK(decimals BETWEEN 0 AND 36), amount numeric(78,0) NOT NULL CHECK(amount>0), required_amount numeric(78,0) NOT NULL CHECK(required_amount>0), plan text NOT NULL, status text NOT NULL CHECK(status IN ('pending','confirmed','underpaid','failed')), failure_reason text, block_number bigint, block_hash text, source text NOT NULL CHECK(source IN ('checkout','manual','reconciler')), period_start timestamptz, period_end timestamptz, confirmed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), UNIQUE(network,tx_hash));
+CREATE INDEX IF NOT EXISTS payments_by_user ON payments(user_id,created_at);
+CREATE INDEX IF NOT EXISTS payments_pending ON payments(status) WHERE status='pending';
+CREATE TABLE IF NOT EXISTS unmatched_transfers(network text NOT NULL, tx_hash text NOT NULL, log_index integer NOT NULL, from_address text NOT NULL, token text NOT NULL, amount numeric(78,0) NOT NULL, block_number bigint NOT NULL, seen_at timestamptz NOT NULL DEFAULT now(), resolved_note text, PRIMARY KEY(network,tx_hash,log_index));
+CREATE TABLE IF NOT EXISTS alert_rules(id bigserial PRIMARY KEY, user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE, direction text NOT NULL CHECK(direction IN ('above','below')), threshold numeric(8,1) NOT NULL CHECK(threshold>=0 AND threshold<=100000), created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(user_id,direction,threshold));
+CREATE TABLE IF NOT EXISTS email_outbox(id bigserial PRIMARY KEY, dedupe_key text UNIQUE NOT NULL, kind text NOT NULL, to_email text NOT NULL, subject text NOT NULL, text_body text NOT NULL, html_body text NOT NULL, status text NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','sent','failed')), attempts integer NOT NULL DEFAULT 0, next_attempt_at timestamptz NOT NULL DEFAULT now(), last_error text, provider_id text, created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz);
+CREATE INDEX IF NOT EXISTS email_outbox_due ON email_outbox(next_attempt_at) WHERE status='queued';
+CREATE TABLE IF NOT EXISTS worker_state(key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS admin_actions(id bigserial PRIMARY KEY, admin_email text NOT NULL, action text NOT NULL, user_id bigint REFERENCES users(id), details jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+INSERT INTO schema_migrations(version) VALUES(7) ON CONFLICT DO NOTHING;

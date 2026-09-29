@@ -55,6 +55,10 @@ try{
    if(Date.now()-scheduled>120000){log({event:'missed_midnight',scheduled:scheduled.toISOString()});continue}
    try{log(await runJob(db,{kind:'daily',trigger:'scheduler',maxBlocks:120000,throughDay:completedDay(),onProgress:log,signal:stop.signal}))}catch(error){log({event:'scheduler_failure',name:error.name,message:error.message})}
   }
+ }else if(command==='worker'){
+  // Payments, alerts, reminders and email delivery: one long-running process (PM2 kce-worker).
+  const {accountsConfig}=await import('./config.mjs'),{createMailer}=await import('./mailer.mjs'),{runWorker}=await import('./worker.mjs');
+  const cfg=accountsConfig();await runWorker(db,cfg,{mailer:createMailer(cfg),signal:stop.signal,intervalMs:cfg.workerIntervalMs,log});
  }else if(command==='status'){
   const [checkpoints,counts,report]=await Promise.all([db.query('SELECT chain,height,block_time,coverage_start FROM chain_checkpoints ORDER BY chain'),db.query("SELECT (SELECT count(*) FROM blocks) AS replay_headers,(SELECT count(*) FROM daily_chain_stats) AS daily_chain_rows,(SELECT count(*) FROM daily_accounts) AS daily_account_rows,(SELECT count(*) FROM daily_metrics) AS raw_days,(SELECT count(*) FROM index_snapshots) AS score_days,(SELECT count(*) FROM module_identity_reviews) AS pending_module_identities,(SELECT count(*) FROM module_deployments WHERE kind='new' AND artifact_status='review') AS pending_artifact_reviews"),acceptanceReport(db)]);
   log({window,collectionStart:COLLECTION_START,initialHistoryDays:INITIAL_HISTORY_DAYS,summaryRetention:'permanent',checkpoints:checkpoints.rows,...counts.rows[0],acceptance:report});
@@ -150,6 +154,6 @@ try{
   await writeFile(resolve(dir,'day-report.json'),JSON.stringify({day,methodVersion:METHOD_VERSION,calculation,tvl:{registryVersion:registry.version,tvlKda:tvl.tvlKda,tvlUsd:tvl.tvlUsd,kdaUsd:tvl.kdaUsd,protocols},newModules:{fromDay:weekFrom,throughDay:day,counted,modules}},null,2)+'\n');
   await writeFile(resolve(dir,'day-report.md'),md);
   log({day,directory:dir,index:calculation.composite,protocols:protocols.length,newModules:modules.length,counted});
- }else throw new Error('Commands: migrate, index, github, compute, backfill, backfill-worker, daily, scheduler, status, create-key, revoke-key, import-tvl, stage-day, finish-initial-review, verify-sample, report, export');
+ }else throw new Error('Commands: migrate, worker, index, github, compute, backfill, backfill-worker, daily, scheduler, status, create-key, revoke-key, import-tvl, stage-day, finish-initial-review, verify-sample, report, export');
 }catch(error){if(error.name!=='AbortError'){log({error:error.name,message:error.message,code:error.code,details:error.details});process.exitCode=1}}
 finally{await db.end()}

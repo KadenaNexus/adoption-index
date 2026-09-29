@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { plans, type PlanId } from '../lib/billing-terms';
 
-const notes: Record<PlanId, [string, string]> = { monthly: ['per month', 'cancel anytime'], annual: ['per year', 'save 27%'] };
+const notes: Record<PlanId, [string, string]> = { monthly: ['30 days', 'no auto-renewal'], annual: ['365 days', 'save 27%'] };
 
 // Native radio inputs give one tab stop and arrow-key selection for free.
 export default function PlanPicker() {
