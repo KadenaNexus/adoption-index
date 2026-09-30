@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TRANSFER_SELECTOR, chainIdHex, classifyWalletError, encodeTransfer, explorerTxUrl, formatTokenAmount, isAddress, isTxHash, noWalletMessage,
-  normalizeTxHash, parseChainId, sameChain, shortAddress, utf8ToHex, walletConnectAddress, walletConnectFailure, walletConnectInit,
+  normalizeTxHash, parseChainId, sameChain, shortAddress, unsupportedWalletsMessage, utf8ToHex, walletConnectAddress, walletConnectFailure, walletConnectInit,
 } from '../lib/wallet.ts';
 
 const PAY_TO = '0x4274907CE85E100a5EbAe1f7286DeB5083a52e98';
@@ -156,4 +156,9 @@ test('the no-wallet message leads with WalletConnect and mentions the 6-digit co
   assert.doesNotMatch(without, /WalletConnect/);
   assert.match(without, /MetaMask, Trust Wallet or Binance Wallet/);
   assert.match(without, /6-digit code from your email/);
+});
+
+test('a wallet left out for lacking BNB Smart Chain is named, so the visitor knows why it is missing', () => {
+  assert.equal(unsupportedWalletsMessage(['Phantom'], 'BNB Smart Chain'), 'Phantom doesn’t support BNB Smart Chain, so it isn’t listed.');
+  assert.equal(unsupportedWalletsMessage(['Phantom', 'Other', 'Third'], 'BNB Smart Chain'), 'Phantom, Other and Third don’t support BNB Smart Chain, so they aren’t listed.');
 });

@@ -312,6 +312,34 @@ test('EIP-6963 discovery lists announced wallets once each, keeping only data: i
   assert.deepEqual(last.map(w => [w.id, w.name, w.icon]), [['u1', 'MetaMask', 'data:image/svg+xml;base64,PHN2Zy8+'], ['u2', 'Trust Wallet', null]]);
   assert.equal(last[0].provider, metamask);
 });
+test('EIP-6963 discovery leaves out wallets without BNB Smart Chain (Phantom) and names them once', async () => {
+  const win = fakeWindow(), lists = [], left = [];
+  const metamask = provider(), rabby = { ...provider(), isRabby: true, isMetaMask: true }, phantom = { ...provider(), isPhantom: true, isMetaMask: true };
+  win.addEventListener('eip6963:requestProvider', () => {
+    const announce = (info, p) => win.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: { info, provider: p } }));
+    announce({ uuid: 'p1', name: 'Phantom', rdns: 'app.phantom' }, phantom);
+    announce({ uuid: 'm1', name: 'MetaMask', rdns: 'io.metamask' }, metamask);
+    announce({ uuid: 'p2', name: 'Phantom', rdns: 'app.phantom' }, phantom);
+    announce({ uuid: 'r1', name: 'Rabby Wallet', rdns: 'io.rabby' }, rabby);
+    announce({ uuid: 'x1', name: 'Phantom (renamed)', rdns: 'com.example' }, { ...provider(), isPhantom: true });
+  });
+  await withWindow(win, async () => {
+    const stop = discoverWallets(list => lists.push(list), 20, names => left.push(names));
+    await new Promise(r => setTimeout(r, 40));
+    stop();
+  });
+  assert.deepEqual(lists.at(-1).map(w => w.name), ['MetaMask', 'Rabby Wallet']);
+  assert.deepEqual(left.at(-1), ['Phantom', 'Phantom (renamed)']);
+  assert.equal(left.length, 2, 'each name is reported once');
+  // window.ethereum from Phantom alone is not offered either.
+  const fallback = [], fallbackLeft = [];
+  await withWindow(fakeWindow({ ethereum: { ...provider(), isPhantom: true, isMetaMask: true } }), async () => {
+    const stop = discoverWallets(list => fallback.push(list), 10, names => fallbackLeft.push(names));
+    await new Promise(r => setTimeout(r, 30));
+    stop();
+  });
+  assert.deepEqual([fallback, fallbackLeft], [[], [['Phantom']]]);
+});
 test('EIP-6963 discovery falls back to window.ethereum only when nothing announces', async () => {
   const injected = { ...provider(), isTrust: true }, lists = [];
   await withWindow(fakeWindow({ ethereum: injected }), async () => {

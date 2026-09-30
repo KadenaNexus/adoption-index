@@ -135,6 +135,11 @@ export function walletConnectAddress(session: unknown, chainId: number, reported
   return first ?? approved[0] ?? null;
 }
 
+/** Why a wallet the visitor has installed isn't listed: it can't use the payment chain. */
+export function unsupportedWalletsMessage(names: string[], chainName: string): string {
+  const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0] ?? '';
+  return names.length > 1 ? `${list} don’t support ${chainName}, so they aren’t listed.` : `${list} doesn’t support ${chainName}, so it isn’t listed.`;
+}
 export function noWalletMessage(walletConnect: boolean): string {
   const inApp = 'you can also open this page in the browser inside MetaMask, Trust Wallet or Binance Wallet; you’ll need to sign in there with the 6-digit code from your email.';
   return walletConnect
