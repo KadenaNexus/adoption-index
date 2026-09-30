@@ -40,7 +40,6 @@ const NO_BSC_RDNS = new Set(['app.phantom']);
 const withoutBsc = (info: Record<string, unknown>, provider: object) =>
   (typeof info.rdns === 'string' && NO_BSC_RDNS.has(info.rdns)) || (provider as Record<string, unknown>).isPhantom === true;
 function fallbackName(p: Record<string, unknown>): string {
-  if (p.isPhantom) return 'Phantom';
   if (p.isTrust || p.isTrustWallet) return 'Trust Wallet';
   if (p.isBinance || p.isBinanceChain) return 'Binance Wallet';
   if (p.isCoinbaseWallet) return 'Coinbase Wallet';
@@ -48,22 +47,19 @@ function fallbackName(p: Record<string, unknown>): string {
   return 'Browser wallet';
 }
 /**
- * Lists injected wallets as they announce themselves, leaving out the ones that can't use BNB Smart Chain (their
- * names go to `onUnsupported`). If none answers within `fallbackMs`, window.ethereum (if any) is offered as one
- * "browser wallet". Returns a cleanup function.
+ * Lists injected wallets as they announce themselves, leaving out the ones that can't use BNB Smart Chain. If none
+ * answers within `fallbackMs`, window.ethereum (if any) is offered as one "browser wallet". Returns a cleanup function.
  */
-export function discoverWallets(onChange: (wallets: InjectedWallet[]) => void, fallbackMs = 500, onUnsupported?: (names: string[]) => void): () => void {
+export function discoverWallets(onChange: (wallets: InjectedWallet[]) => void, fallbackMs = 500): () => void {
   if (typeof window === 'undefined') return () => {};
-  const found = new Map<string, InjectedWallet>(), unsupported = new Set<string>();
-  const leaveOut = (name: string) => { if (!unsupported.has(name)) { unsupported.add(name); onUnsupported?.([...unsupported]); } };
+  const found = new Map<string, InjectedWallet>();
   const announce = (event: Event) => {
     const detail = (event as CustomEvent).detail as { info?: Record<string, unknown>; provider?: Eip1193Provider } | undefined;
     const info = detail?.info, provider = detail?.provider;
-    if (!info || !provider || typeof provider.request !== 'function') return;
+    if (!info || !provider || typeof provider.request !== 'function' || withoutBsc(info, provider)) return;
     const id = typeof info.uuid === 'string' ? info.uuid : typeof info.rdns === 'string' ? info.rdns : '';
     const name = typeof info.name === 'string' ? info.name.slice(0, 40) : '';
     if (!id || !name || [...found.values()].some(w => w.provider === provider)) return;
-    if (withoutBsc(info, provider)) { leaveOut(name); return; }
     found.set(id, { id, name, icon: safeIcon(info.icon), provider });
     onChange([...found.values()]);
   };
@@ -71,9 +67,7 @@ export function discoverWallets(onChange: (wallets: InjectedWallet[]) => void, f
   window.dispatchEvent(new Event('eip6963:requestProvider'));
   const timer = window.setTimeout(() => {
     const injected = (window as unknown as { ethereum?: Eip1193Provider & Record<string, unknown> }).ethereum;
-    if (found.size || !injected || typeof injected.request !== 'function') return;
-    if (withoutBsc({}, injected)) leaveOut(fallbackName(injected));
-    else onChange([{ id: 'injected', name: fallbackName(injected), icon: null, provider: injected }]);
+    if (!found.size && injected && typeof injected.request === 'function' && !withoutBsc({}, injected)) onChange([{ id: 'injected', name: fallbackName(injected), icon: null, provider: injected }]);
   }, fallbackMs);
   return () => { window.removeEventListener('eip6963:announceProvider', announce); window.clearTimeout(timer); };
 }

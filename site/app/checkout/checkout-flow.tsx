@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import {
-  checkoutMessage, explorerTxUrl, formatExpiry, noWalletMessage, normalizeTxHash, pickError, pickIntent, pollUntilSettled, shortAddress, stageStatus, unsupportedWalletsMessage,
+  checkoutMessage, explorerTxUrl, formatExpiry, noWalletMessage, normalizeTxHash, pickError, pickIntent, pollUntilSettled, shortAddress, stageStatus,
   type CheckoutPlan, type CheckoutStage, type EvmConfig, type Intent, type MessageContext, type PollResult,
 } from '../../lib/wallet';
 import {
@@ -105,7 +105,6 @@ export default function CheckoutFlow({ plan, evm, walletConnectProjectId, linked
   const freshWalletConnect = useRef(false);
   const [token, setToken] = useState(evm.tokens[0].symbol);
   const [wallets, setWallets] = useState<InjectedWallet[]>([]);
-  const [unsupportedWallets, setUnsupportedWallets] = useState<string[]>([]);
   const [searched, setSearched] = useState(false);
   const [stage, setStageState] = useState<CheckoutStage>('choose');
   const [viaWalletConnect, setViaWalletConnect] = useState(false);
@@ -125,7 +124,7 @@ export default function CheckoutFlow({ plan, evm, walletConnectProjectId, linked
   const context: MessageContext = { chainName: evm.chainName, supportEmail };
 
   useEffect(() => {
-    const stop = discoverWallets(setWallets, undefined, setUnsupportedWallets);
+    const stop = discoverWallets(setWallets);
     const timer = window.setTimeout(() => setSearched(true), 600);
     return () => { stop(); window.clearTimeout(timer); };
   }, []);
@@ -331,7 +330,6 @@ export default function CheckoutFlow({ plan, evm, walletConnectProjectId, linked
       </div>
       {/* For a wallet that never answers, and over WalletConnect also when its QR modal (which has its own close) never appears. */}
       {(stage === 'opening' || stage === 'connecting') && <button type="button" className="pay-link-button pay-cancel" onClick={cancelConnecting}>Cancel</button>}
-      {unsupportedWallets.length > 0 && <p className="pay-hint">{unsupportedWalletsMessage(unsupportedWallets, evm.chainName)}</p>}
       {searched && !wallets.length && <p className="pay-hint">{noWalletMessage(!!walletConnectProjectId)}</p>}
     </section>}
 
