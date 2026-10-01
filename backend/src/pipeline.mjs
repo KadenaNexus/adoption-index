@@ -13,6 +13,13 @@ import {fileURLToPath} from 'node:url';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const dateOnly=value=>value instanceof Date?value.toISOString().slice(0,10):value;
+// Node reports a network failure as "fetch failed"; its cause names the host and the reason (a reset, DNS, a timeout).
+// URLs in it are cut to their origin, so a path or query never reaches the job record or the logs.
+const causeOf=error=>{
+ const cause=error?.cause;if(!cause||typeof cause!=='object')return undefined;
+ const message=String(cause.message??'').replace(/\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi,url=>{try{return new URL(url).origin}catch{return '[url]'}}).replace(/[\x00-\x1f]/g,' ').slice(0,300);
+ return {name:cause.name,code:cause.code,message};
+};
 async function assertCollectionCoverage(tx,window){
  await assertCollectionState(tx);
  // The immutable start and canonical cutoff must agree with every chain.
@@ -179,7 +186,7 @@ export async function runJob(db,{kind='backfill',trigger='manual',maxBlocks=2000
   detail.github=await collectGithubWithWait(db,{throughDay,waitForQuota:kind==='daily',signal,onProgress,...githubOptions});
   detail.publication=await compute(db,{throughDay,onProgress});status='succeeded';
   return {id,status,...detail};
-  }catch(error){detail.error={name:error.name,message:error.message,code:error.code,details:error.details};onProgress({event:'job_incomplete',...detail.error});return{id,status,...detail}}
+  }catch(error){const cause=causeOf(error);detail.error={name:error.name,message:error.message,code:error.code??cause?.code,details:error.details,...(cause?{cause}:{})};onProgress({event:'job_incomplete',...detail.error});return{id,status,...detail}}
   finally{await db.query('UPDATE job_runs SET completed_at=now(),status=$2,details=$3 WHERE id=$1',[id,status,detail])}
  }finally{try{if(locked)await lock.query("SELECT pg_advisory_unlock(hashtext('kce-publication-job'))")}finally{lock.release()}}
 }

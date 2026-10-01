@@ -45,16 +45,11 @@ try{
  else if(['backfill','daily'].includes(command)){
   const result=await runJob(db,{kind:command,maxBlocks:numberOption('max-blocks',command==='daily'?120000:2000),throughDay,onProgress:log,signal:stop.signal});log(result);if(result.status!=='succeeded')process.exitCode=2;
  }else if(command==='scheduler'){
-  // A restart never retroactively labels a manual/backfilled run as a midnight run.
-  let target=new Date();target.setUTCHours(24,0,0,0);
-  log({event:'scheduler_ready',nextRun:target.toISOString()});
-  while(!stop.signal.aborted){
-   await sleep(Math.min(30000,Math.max(1,target-Date.now())),undefined,{signal:stop.signal});
-   if(Date.now()<target)continue;
-   const scheduled=target;target=new Date(target.getTime()+86400000);
-   if(Date.now()-scheduled>120000){log({event:'missed_midnight',scheduled:scheduled.toISOString()});continue}
-   try{log(await runJob(db,{kind:'daily',trigger:'scheduler',maxBlocks:120000,throughDay:completedDay(),onProgress:log,signal:stop.signal}))}catch(error){log({event:'scheduler_failure',name:error.name,message:error.message})}
-  }
+  // The 00:00 UTC run, plus retries and a catch-up after a restart (scheduler.mjs).
+  const {runScheduler}=await import('./scheduler.mjs');
+  await runScheduler({log,signal:stop.signal,
+   latestPublishedDay:async()=>(await db.query('SELECT max(day)::text AS day FROM index_snapshots')).rows[0]?.day??null,
+   runDaily:()=>runJob(db,{kind:'daily',trigger:'scheduler',maxBlocks:120000,throughDay:completedDay(),onProgress:log,signal:stop.signal})});
  }else if(command==='worker'){
   // Payments, alerts, reminders and email delivery: one long-running process (PM2 kce-worker).
   const {accountsConfig}=await import('./config.mjs'),{createMailer}=await import('./mailer.mjs'),{runWorker}=await import('./worker.mjs');

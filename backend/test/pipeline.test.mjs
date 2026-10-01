@@ -56,6 +56,19 @@ test('publication advisory lock and pooled connection are released when final jo
   assert.equal(calls.released, 1, 'an audit update failure must not leak the pool client');
 });
 
+test('a network failure records its cause (code, host, reason) with URLs cut to their origin', async () => {
+  const { db } = failingAuditDatabase();
+  const cause = Object.assign(new Error('Connect Timeout Error (attempted address: api.chainweb-community.org:443, timeout: 10000ms) https://api.chainweb-community.org/chainweb/0.0/mainnet01/cut?secret=1'), { name: 'ConnectTimeoutError', code: 'UND_ERR_CONNECT_TIMEOUT' });
+  const result = await runJob(db, { indexer: async () => { throw new TypeError('fetch failed', { cause }); } });
+  assert.equal(result.status, 'incomplete');
+  assert.deepEqual([result.error.name, result.error.message, result.error.code], ['TypeError', 'fetch failed', 'UND_ERR_CONNECT_TIMEOUT']);
+  assert.equal(result.error.cause.name, 'ConnectTimeoutError');
+  assert.match(result.error.cause.message, /attempted address: api\.chainweb-community\.org:443/);
+  assert.ok(result.error.cause.message.endsWith('https://api.chainweb-community.org') && !result.error.cause.message.includes('secret'), 'no path or query is recorded');
+  const plain = await runJob(failingAuditDatabase().db, { indexer: sourceFailure });
+  assert.equal('cause' in plain.error, false, 'an error without a cause is recorded as before');
+});
+
 test('ordinary source failure records incomplete status and releases the publication lock exactly once', async () => {
   const { db, calls } = failingAuditDatabase();
   const result = await runJob(db, { indexer: sourceFailure });
