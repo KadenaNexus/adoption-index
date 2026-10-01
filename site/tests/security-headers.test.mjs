@@ -27,3 +27,7 @@ test('the sign-in link page sends no referrer', () => {
     assert.equal(rules.at(-1).source, '/signin/verify', 'listed last so it overrides the site-wide value');
   }
 });
+
+test('production builds start fresh: no persistent build cache to ship a previous stylesheet', () => {
+  assert.equal(config.experimental?.turbopackFileSystemCacheForBuild, false);
+});

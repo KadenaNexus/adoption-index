@@ -31,13 +31,14 @@ function integer(value,fallback,name,min,max){
  if(value===undefined||value==='')return fallback;
  const n=Number(value);if(!Number.isSafeInteger(n)||n<min||n>max)throw new Error(`${name} must be an integer from ${min} to ${max}`);return n;
 }
-function mailConfig(env,publicSiteUrl,adminEmails){
+function mailConfig(env,publicSiteUrl){
  // Unset in production means `none`: nothing is sent and sign-in says it has not opened yet. `log` writes each
  // message, sign-in links included, to data/mail.log; outside local testing it is limited to ADMIN_EMAILS.
  const transport=env.MAIL_TRANSPORT||(env.NODE_ENV==='production'?'none':'log');
  if(!['none','log','resend'].includes(transport))throw new Error('MAIL_TRANSPORT must be none, log or resend');
  if(transport==='resend'&&(!env.RESEND_API_KEY||!env.MAIL_FROM))throw new Error('MAIL_TRANSPORT=resend needs RESEND_API_KEY and MAIL_FROM');
- const supportEmail=env.SUPPORT_EMAIL?normalizeEmail(env.SUPPORT_EMAIL):[...adminEmails][0]??null;
+ // Public (checkout, email footers, reply-to), so only an address set here on purpose: never an admin's by default.
+ const supportEmail=env.SUPPORT_EMAIL?normalizeEmail(env.SUPPORT_EMAIL):null;
  if(env.SUPPORT_EMAIL&&!supportEmail)throw new Error('SUPPORT_EMAIL is not a valid email address');
  return Object.freeze({transport,
   // Who may receive a sign-in link: everyone once email really goes out (or on a local test site), else admins only.
@@ -80,7 +81,7 @@ export function accountsConfig(env=process.env){
  const admins=list(env.ADMIN_EMAILS).map(normalizeEmail);
  if(admins.includes(null))throw new Error('ADMIN_EMAILS must be comma-separated email addresses');
  const adminEmails=new Set(admins);
- return Object.freeze({siteKey,publicSiteUrl,adminEmails,mail:mailConfig(env,publicSiteUrl,adminEmails),
+ return Object.freeze({siteKey,publicSiteUrl,adminEmails,mail:mailConfig(env,publicSiteUrl),
   payments:paymentsConfig(env),walletConnectProjectId,
   workerIntervalMs:integer(env.WORKER_INTERVAL_MS,60000,'WORKER_INTERVAL_MS',1000,3600000)});
 }

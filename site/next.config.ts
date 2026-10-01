@@ -20,6 +20,9 @@ export function securityHeaders(production = process.env.NODE_ENV === "productio
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Production builds start fresh. On the server, a build that reused this cache (on by default in Next 16) shipped
+  // the new pages with the previous stylesheet.
+  experimental: { turbopackFileSystemCacheForBuild: false },
   async headers() {
     return securityHeaders();
   },

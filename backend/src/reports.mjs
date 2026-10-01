@@ -57,18 +57,20 @@ const noticeRecipients=cfg=>cfg.adminEmails?.size?[...cfg.adminEmails]:cfg.mail?
 export async function submitReport(db,cfg,body,{clientIp,subscriber=false,now=new Date()}={}){
  const input=reportInput(body),hash=ipHash(cfg.siteKey,String(clientIp??'unknown')),limits=REPORT_LIMITS;
  const stored=await transaction(db,async c=>{
-  // One report at a time, so concurrent requests cannot all pass the same count.
+  // One report at a time, so concurrent requests cannot all pass the same count. The outbox is locked before
+  // data_reports, the order schema.sql takes them in, so a report cannot deadlock with a concurrent `npm run migrate`.
   await c.query("SELECT pg_advisory_xact_lock(hashtext('kce-data-report'))");
+  await c.query('LOCK TABLE email_outbox IN ROW EXCLUSIVE MODE');
   await c.query('UPDATE data_reports SET ip_hash=NULL WHERE ip_hash IS NOT NULL AND created_at<$1',[ago(now,IP_KEPT_MS)]);
   const n=(await c.query('SELECT count(*) FILTER (WHERE ip_hash=$1 AND created_at>$2)::int AS hour,count(*) FILTER (WHERE ip_hash=$1)::int AS day,count(*)::int AS total FROM data_reports WHERE created_at>$3',
    [hash,ago(now,HOUR),ago(now,DAY)])).rows[0];
   if(n.hour>=limits.perIpPerHour||n.day>=limits.perIpPerDay)return {limited:'rate_limit'};
-  // A distinct code for the cap across everyone: the site then says to try tomorrow rather than later.
+  // A distinct code for the cap across everyone: the site then says the pause lasts hours, not minutes.
   if(!subscriber&&n.total>=limits.perDay)return {limited:'reports_busy'};
   const row=(await c.query('INSERT INTO data_reports(indicator,description,evidence,email,ip_hash,created_at) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',
    [input.indicator,input.description,input.evidence,input.email,hash,now])).rows[0];
   if(n.total<limits.noticesPerDay){
-   const message=dataReport({...reportView(row),indicator:REPORT_INDICATORS[row.indicator],publicSiteUrl:cfg.publicSiteUrl,lastNotice:n.total===limits.noticesPerDay-1});
+   const message=dataReport({...reportView(row),indicator:REPORT_INDICATORS[row.indicator],publicSiteUrl:cfg.publicSiteUrl,lastNotice:n.total===limits.noticesPerDay-1?limits.noticesPerDay:0});
    for(const to of noticeRecipients(cfg))await enqueueEmail(c,{dedupeKey:`report:${row.id}:${to}`,kind:'data_report',to,message});
   }
   return {id:Number(row.id)};

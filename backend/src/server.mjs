@@ -66,7 +66,8 @@ export function createServer(pool,{cfg=accountsConfig(),mailer=createMailer(cfg)
     if(!cfg.siteKey)throw new HttpError(503,'accounts_disabled');
     if(!site.siteOk)throw new HttpError(401,'site_key_required');
     const body=request.method==='POST'?await readJson(request):undefined,time=now();
-    const session=site.sessionToken?await resolveSession(pool,site.sessionToken,{cfg,now:time}):null;
+    // A report's session only lifts the daily cap for subscribers, so reading it must not record when it was used.
+    const session=site.sessionToken?await resolveSession(pool,site.sessionToken,{cfg,now:time,touch:route!=='POST /reports'}):null;
     const requireSession=()=>{if(!session)throw new HttpError(401,'session_required');return session};
     const ctx={db:pool,cfg,request,url,body,clientIp:ip,session,mailer,now:time,requireSession,
      requireSubscriber(){const s=requireSession();if(!s.subscription?.active)throw new HttpError(403,'subscription_required');return s},

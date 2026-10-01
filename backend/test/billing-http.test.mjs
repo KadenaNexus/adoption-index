@@ -170,7 +170,7 @@ test('without PAYMENT_TEST_PLAN the test plan is refused even for admins; with p
  const a=await app(t,{PAYMENT_TEST_PLAN:''}),admin=await a.user('admin@example.com');
  assert.deepEqual(await a.api('/billing/intents',{token:admin.token,body:{plan:'test',token:'USDT'}}),{status:400,data:{error:'invalid_plan'}});
  const off=await app(t,{PAYMENT_NETWORK:''}),u=await off.user('u@example.com');
- assert.deepEqual((await off.api('/billing/config')).data,{enabled:false,testnet:false,signinOpen:true,supportEmail:'admin@example.com',walletConnectProjectId:null});
+ assert.deepEqual((await off.api('/billing/config')).data,{enabled:false,testnet:false,signinOpen:true,supportEmail:null,walletConnectProjectId:null},'no SUPPORT_EMAIL, so no contact, and never the admin address');
  for(const [path,body] of [['/wallets/challenge',{address:PAY}],['/wallets/link',{nonce:'a'.repeat(32),signature:'0x'}],['/billing/intents',{plan:'monthly',token:'USDT'}],['/billing/payments',{txHash:'0x'+'1'.repeat(64)}]])
   assert.deepEqual(await off.api(path,{token:u.token,body}),{status:503,data:{error:'payments_disabled'}},path);
 });

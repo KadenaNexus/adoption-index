@@ -20,8 +20,10 @@ export const reportHref = (indicator?: ReportIndicator): string => indicator ? `
 // and tabs, and the joiners some scripts and emoji need; the evidence becomes one plain line.
 export const cleanDescription = (value: unknown): string => typeof value === 'string' ? value.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g, '').trim() : '';
 export const cleanEvidence = (value: unknown): string => typeof value === 'string' ? value.replace(/[\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g, '').replace(/[\u0000-\u001f\u007f-\u009f\s]+/g, ' ').trim() : '';
-// A plain address only (the backend's rule), so a reply link can never carry extra recipients or headers.
+// A plain address only (the backend's rule), so a reply link can never carry extra recipients or headers. Sign-in
+// accepts more, so the form only starts from an account's address when it passes.
 const PLAIN_EMAIL = /^[a-z0-9._+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,63}$/i;
+export const isReportEmail = (value: string): boolean => value.length <= 254 && PLAIN_EMAIL.test(value);
 
 export type ReportFields = { indicator: ReportIndicator; description: string; evidence: string; email?: string };
 /** The report to send, or the code of the first field to fix (the email is optional; blank means none). */
@@ -35,5 +37,5 @@ export function reportFields(body: Record<string, unknown>): ReportFields | { er
   const email = typeof body.email === 'string' ? body.email.trim() : body.email == null ? '' : null;
   if (email === null) return { error: 'invalid_email' };
   if (!email) return { indicator, description, evidence };
-  return email.length <= 254 && PLAIN_EMAIL.test(email) ? { indicator, description, evidence, email } : { error: 'invalid_email' };
+  return isReportEmail(email) ? { indicator, description, evidence, email } : { error: 'invalid_email' };
 }

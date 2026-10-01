@@ -122,15 +122,17 @@ function LockedBreakdown() {
 }
 
 // Each card shows the current value against its fixed baseline (matching unit) and the ratio.
-function describe(metric: ProMetric, breakdown: ProBreakdown): { value: string; title?: string; parts: string[]; wow?: string } {
+function describe(metric: ProMetric, breakdown: ProBreakdown): { value: string; title?: string; approx?: { text: string; title: string }; parts: string[]; wow?: string } {
   const window = metric.windowDays < 7 ? `${metric.windowDays}-day` : '7-day';
   const minimum = metric.baselineRule === 'minimum' ? ' (minimum)' : '';
   const ratio = `${formatRatio(metric.ratio)} baseline`;
   switch (metric.id) {
     case 'addresses': return { value: formatCount(metric.value), parts: [`${window} avg`, `baseline ${formatAmount(metric.baselineValue)}`, ratio], wow: 'WoW' };
     case 'contracts': return { value: formatCount(metric.value), parts: [`${window} total`, `baseline ${formatAmount(metric.baselineValue)}${minimum}`, ratio] };
-    // Same 7-day mean the index uses, shown in USD at the latest KDA/USDT price (approximate; USDT treated as USD).
-    case 'tvl': return { value: formatUsd(metric.value * breakdown.kdaUsd), title: `${window} average of ${formatKda(metric.value)} at the latest KDA/USDT price`, parts: [breakdown.protocolCount ? `${breakdown.protocolCount} protocols` : 'Named registry', `${formatKda(metric.value)} ${window} avg`, `baseline ${formatKda(metric.baselineValue)}`, ratio], wow: '(KDA-denom)' };
+    // The same 7-day mean in KDA that the index uses, like the bar and the baseline; the dollar figure under it is a guide
+    // at the latest KDA/USDT price (USDT taken as one US dollar).
+    case 'tvl': return { value: formatKda(metric.value), approx: { text: `≈ ${formatUsd(metric.value * breakdown.kdaUsd)} at today’s price`, title: 'At the latest KDA/USDT price on Mercatus, taking USDT as one US dollar' },
+      parts: [breakdown.protocolCount ? `${breakdown.protocolCount} protocols` : 'Named registry', `${window} avg`, `baseline ${formatKda(metric.baselineValue)}`, ratio], wow: '(KDA-denom)' };
     case 'hashrate': return { value: formatHashrate(metric.value), parts: [`${window} avg`, `baseline ${formatHashrate(metric.baselineValue)}`, ratio], wow: 'WoW' };
     case 'commits': return { value: formatCount(metric.value), title: `${window} total`, parts: ['kda-community org', `baseline ${formatAmount(metric.baselineValue)}${minimum}`, ratio] };
   }
@@ -143,6 +145,7 @@ function Breakdown({ breakdown }: { breakdown: ProBreakdown }) {
       return <article className="metric-card" key={metric.id}>
         <div className="metric-head"><h3 className="metric-label">{spec.label}</h3><span className="weight-badge" title="Weight in the index">{Math.round(spec.weight * 100)}%</span></div>
         <p className="metric-value" title={d.title}>{d.value}</p>
+        {d.approx && <p className="metric-approx" title={d.approx.title}>{d.approx.text}</p>}
         <div className="meter meter-baseline" role="img" aria-label={`${formatRatio(metric.ratio)} its baseline; the mark is the baseline`}><i className={`tone-${ratioTone(metric.ratio)}`} style={{ width: `${Math.min(100, metric.ratio * 50)}%` }}/></div>
         <p className="metric-caption">{d.parts.map((part, i) => <Fragment key={part}>{i ? ' · ' : ''}<span className="nowrap">{part}</span></Fragment>)}{d.wow && metric.weekOverWeek !== null && <> · <WeekChange change={formatChange(metric.weekOverWeek, 0)} suffix={d.wow}/></>}</p>
         <ReportLink indicator={metric.id}/>

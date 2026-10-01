@@ -26,7 +26,8 @@ export default async function Admin() {
       <div className="notice-actions"><Link className="button" href="/admin">Try again</Link></div></section>
   </PageShell>;
   const open = data.counts.unresolvedTransfers ?? data.unmatched.filter(u => !u.resolved).length;
-  const openReports = data.counts.openReports ?? data.reports.filter(r => !r.resolved).length;
+  // The backend's count only: an API that predates reports shows a dash, not a reassuring 0.
+  const openReports = data.counts.openReports;
   return <PageShell banner={banner}>
     <section className="hero"><p className="eyebrow">Admin</p><h1>Payments and subscriptions</h1></section>
     <dl className="admin-counts">
@@ -73,7 +74,7 @@ export default async function Admin() {
     </section>
 
     <section className="admin-section" id="reports" aria-labelledby="reports-title">
-      <h2 id="reports-title">Data issue reports <small>{openReports} open</small></h2>
+      <h2 id="reports-title">Data issue reports <small>{count(openReports)} open</small></h2>
       <p className="account-meta">Sent from the “Report a data issue” links beside the indicators and on the methodology page. The first 10 reports in any 24 hours are also emailed to the admins. Check each one, reply if an email was given, then resolve it with a note.</p>
       {data.reports.length ? <div className="table-wrap"><table className="admin-table">
         <thead><tr><th scope="col">Received</th><th scope="col">Indicator</th><th scope="col">Issue</th><th scope="col">Link or ID</th><th scope="col">Email</th><th scope="col">Resolution</th></tr></thead>

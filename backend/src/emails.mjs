@@ -7,6 +7,9 @@ const PLAN_LABELS={monthly:'Monthly',annual:'Annual',test:'Test',manual:'Manual'
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const oneLine=value=>String(value??'').replace(/[\r\n]+/g,' ').trim();
 const site=url=>String(url||DEFAULT_SITE).replace(/\/+$/,'');
+// Someone else's text in an email: blank lines shrink to one (no pushing the email's own words out of view), and in
+// the text version every line is marked as quoted.
+const quoteText=value=>String(value??'').replace(/[^\S\n]+$/gm,'').replace(/\n{3,}/g,'\n\n');
 const originOf=url=>{try{return new URL(url).origin}catch{return DEFAULT_SITE}};
 export function formatDay(value){const d=new Date(value);return Number.isFinite(d.getTime())?`${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`:String(value??'')}
 export function formatDateTime(value){const d=new Date(value);if(!Number.isFinite(d.getTime()))return String(value??'');const two=n=>String(n).padStart(2,'0');return `${formatDay(d)}, ${two(d.getUTCHours())}:${two(d.getUTCMinutes())} UTC`}
@@ -21,14 +24,15 @@ function render({subject,heading,blocks,publicSiteUrl,supportEmail,notes=[],acco
  const base=site(publicSiteUrl),manage=`${base}/account`;
  const footer=[...notes,...(account?[`Manage your account: ${manage}`]:[]),...(supportEmail?[`Questions? Contact ${supportEmail}`]:[])];
  const text=[heading,...blocks.map(block=>typeof block==='string'?block:block.link?`${block.label}:\n${block.link}`:block.code?`Your code:\n${block.code}`
-  :block.rows?block.rows.map(([label,value,href])=>`${label}: ${value}${href&&href!==value?`\n${href}`:''}`).join('\n'):block.quote??block.note),`--\n${[PRODUCT,...footer].join('\n')}`].join('\n\n')+'\n';
+  :block.rows?block.rows.map(([label,value,href])=>`${label}: ${value}${href&&href!==value?`\n${href}`:''}`).join('\n')
+  :block.quote!==undefined?quoteText(block.quote).split('\n').map(line=>line?`> ${line}`:'>').join('\n'):block.note),`--\n${[PRODUCT,...footer].join('\n')}`].join('\n\n')+'\n';
  const p='margin:0 0 16px;font-size:15px;line-height:1.6;color:#111111';
  const body=blocks.map(block=>{
   if(typeof block==='string')return `<p style="${p}">${esc(block)}</p>`;
   if(block.link)return `<p style="margin:0 0 20px"><a href="${esc(block.link)}" style="display:inline-block;background:#b04856;color:#ffffff;padding:12px 22px;border-radius:6px;font-size:15px;font-weight:700;text-decoration:none">${esc(block.label)}</a></p>${block.copy?`<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7280">Or copy this link into your browser:<br><a href="${esc(block.link)}" style="color:#a3404e;word-break:break-all">${esc(block.link)}</a></p>`:''}`;
   if(block.code)return `<p style="margin:0 0 6px;font-size:13px;color:#6b7280">Your code</p><p style="margin:0 0 20px;font-family:Menlo,Consolas,'Courier New',monospace;font-size:28px;font-weight:700;letter-spacing:6px;color:#111111">${esc(block.code)}</p>`;
   if(block.rows)return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse;font-size:14px;line-height:1.5">${block.rows.map(([label,value,href])=>`<tr><td style="padding:4px 16px 4px 0;color:#6b7280;vertical-align:top;white-space:nowrap">${esc(label)}</td><td style="padding:4px 0;color:#111111;word-break:break-all">${href?`<a href="${esc(href)}" style="color:#a3404e">${esc(value)}</a>`:esc(value)}</td></tr>`).join('')}</table>`;
-  if(block.quote!==undefined)return `<div style="margin:0 0 16px;padding:12px 14px;border-left:3px solid #b04856;background:#fafafa;font-size:14px;line-height:1.6;color:#111111;white-space:pre-wrap;word-break:break-word">${esc(block.quote)}</div>`;
+  if(block.quote!==undefined)return `<div style="margin:0 0 16px;padding:12px 14px;border-left:3px solid #b04856;background:#fafafa;font-size:14px;line-height:1.6;color:#111111;white-space:pre-wrap;word-break:break-word">${esc(quoteText(block.quote))}</div>`;
   return `<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#6b7280">${esc(block.note)}</p>`;
  }).join('');
  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>`
@@ -72,13 +76,16 @@ export function renewalReminder({daysLeft,expiresAt,publicSiteUrl,supportEmail})
   {link:`${site(publicSiteUrl)}/checkout`,label:'Renew Pro'}]});
 }
 /**
- * To the admins: a report from the site's "Report a data issue" form. A visitor typed every field. A link shows in its
- * normalised form (a look-alike host appears as punycode), and the button signs the admin in on any device first.
+ * To the admins: a report from the site's "Report a data issue" form. A visitor typed the link or ID and the description.
+ * A link shows in its normalised form (a look-alike host appears as punycode), and the button, which signs the admin in on
+ * any device first, comes before the visitor's text, so that text cannot pass for the email's own. `lastNotice` is the
+ * number of reports that used up the day's emails, on the last one sent.
  */
-export const dataReport=({id,indicator,description,evidence,evidenceUrl,email,createdAt,publicSiteUrl,lastNotice=false})=>render({
+export const dataReport=({id,indicator,description,evidence,evidenceUrl,email,createdAt,publicSiteUrl,lastNotice=0})=>render({
  subject:`Data issue report #${id}: ${indicator}`,heading:'New data issue report',publicSiteUrl,account:false,blocks:[
  {rows:[['Indicator',indicator],['Received',formatDateTime(createdAt)],['Supporting link or ID',evidenceUrl||evidence,evidenceUrl||undefined],['Follow-up email',email||'None given']]},
- {quote:description},
  {link:`${site(publicSiteUrl)}/signin?next=/admin%23reports`,label:'Open the reports'},
- ...(lastNotice?['This is the 10th report in 24 hours. Until that count drops, new reports appear only on the admin page, without an email.']:[]),
- {note:`Report #${id}, sent from the site’s Report a data issue form. A visitor typed everything above, so check a link before you open it.`}]});
+ {note:`Report #${id}, sent from the site’s Report a data issue form. A visitor typed the link or ID above and the description below: check a link before you open it, and reach the admin page only through the button above.`},
+ ...(lastNotice?[`That makes ${lastNotice} reports in 24 hours. Until the count drops, new reports appear only on the admin page, without an email.`]:[]),
+ 'The visitor’s description:',
+ {quote:description}]});

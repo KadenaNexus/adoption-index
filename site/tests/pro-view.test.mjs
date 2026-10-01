@@ -263,3 +263,13 @@ test('during an outage every request keeps the last verified reading', async () 
     if (origin === undefined) delete process.env.KCE_API_ORIGIN; else process.env.KCE_API_ORIGIN = origin;
   }
 });
+
+test('the TVL card leads with KDA, like its bar and baseline, with the dollar figure as a guide under it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const view = readFileSync(new URL('../app/index-view.tsx', import.meta.url), 'utf8');
+  const tvl = view.slice(view.indexOf("case 'tvl':"), view.indexOf("case 'hashrate':"));
+  assert.match(tvl, /value: formatKda\(metric\.value\)/);
+  assert.match(tvl, /text: `≈ \$\{formatUsd\(metric\.value \* breakdown\.kdaUsd\)\} at today’s price`/);
+  assert.match(tvl, /`\$\{window\} avg`, `baseline \$\{formatKda\(metric\.baselineValue\)\}`/, 'the caption no longer repeats the KDA figure');
+  assert.match(view, /\{d\.approx && <p className="metric-approx" title=\{d\.approx\.title\}>\{d\.approx\.text\}<\/p>\}/);
+});

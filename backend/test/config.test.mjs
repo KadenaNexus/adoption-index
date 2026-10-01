@@ -15,8 +15,8 @@ test('ADMIN_EMAILS: comma-separated addresses, normalised; any entry that is not
  for(const value of ['me@x.io;naif@kadena.ws','me@x.io naif@kadena.ws','<me@x.io>,naif@kadena.ws','me@x.io,naif'])
   assert.throws(()=>accountsConfig({...base,ADMIN_EMAILS:value}),/ADMIN_EMAILS must be comma-separated email addresses/,value);
 });
-test('SUPPORT_EMAIL: an address, or the first admin when unset',()=>{
+test('SUPPORT_EMAIL: an address, or none when unset, so an admin address is never made public',()=>{
  assert.equal(accountsConfig({...base,SUPPORT_EMAIL:'Help@Kadena.ws'}).mail.supportEmail,'help@kadena.ws');
- assert.equal(accountsConfig({...base,ADMIN_EMAILS:'ops@kadena.ws,naif@kadena.ws'}).mail.supportEmail,'ops@kadena.ws');
+ assert.equal(accountsConfig({...base,ADMIN_EMAILS:'ops@kadena.ws,naif@kadena.ws'}).mail.supportEmail,null);
  assert.throws(()=>accountsConfig({...base,SUPPORT_EMAIL:'help at kadena.ws'}),/SUPPORT_EMAIL is not a valid email address/);
 });

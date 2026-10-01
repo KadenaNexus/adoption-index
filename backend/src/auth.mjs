@@ -22,12 +22,13 @@ export async function subscriptionFor(db,userId,now=new Date()){
  const row=(await db.query('SELECT plan,started_at,expires_at FROM subscriptions WHERE user_id=$1',[userId])).rows[0];
  return row?{plan:row.plan,startedAt:iso(row.started_at),expiresAt:iso(row.expires_at),active:new Date(row.expires_at)>now}:null;
 }
-export async function resolveSession(db,token,{cfg,now=new Date()}={}){
+/** `touch:false` leaves last_seen_at alone: a data issue report must not leave a timestamp that names its sender. */
+export async function resolveSession(db,token,{cfg,now=new Date(),touch=true}={}){
  if(typeof token!=='string'||!TOKEN_PATTERN.test(token))return null;
  const hash=hashToken(token);
  const row=(await db.query('SELECT s.user_id,s.last_seen_at,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>$2',[hash,now])).rows[0];
  if(!row)return null;
- if(now-new Date(row.last_seen_at)>5*60000)await db.query('UPDATE sessions SET last_seen_at=$2 WHERE token_hash=$1',[hash,now]);
+ if(touch&&now-new Date(row.last_seen_at)>5*60000)await db.query('UPDATE sessions SET last_seen_at=$2 WHERE token_hash=$1',[hash,now]);
  const user={id:Number(row.user_id),email:row.email,isAdmin:isAdmin(row.email,cfg)};
  return {sessionHash:hash,user,subscription:await subscriptionFor(db,user.id,now)};
 }

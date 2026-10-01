@@ -169,7 +169,7 @@ test('the report page: anyone can open it, it is not indexed, and the form sends
   const page = source('app/report/page.tsx'), form = source('app/report/report-form.tsx');
   assert.match(page, /robots: \{ index: false, follow: false \}/);
   assert.doesNotMatch(page, /redirect\(|notFound\(/, 'no sign-in needed');
-  assert.match(page, /email=\{state\.state === 'signed-in' \? state\.account\.email : ''\}/, 'a signed-in visitor’s email is only a starting value');
+  assert.match(page, /email=\{state\.state === 'signed-in' && isReportEmail\(state\.account\.email\) \? state\.account\.email : ''\}/, 'a signed-in visitor’s email is only a starting value, and only one the form accepts');
   assert.match(form, /postJson\('\/api\/reports', \{ \.\.\.fields, hp \}\)/);
   assert.match(form, /className="hp-field" aria-hidden="true"/);
   assert.match(form, /name="kce_hp" tabIndex=\{-1\} autoComplete="off"/, 'not a name autofill recognises, and out of the tab order');

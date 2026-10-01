@@ -88,7 +88,8 @@ test('billing config: disabled, mainnet and testnet',()=>{
  assert.deepEqual(Object.keys(mainnet),['enabled','network','testnet','chainId','chainName','explorerUrl','addChainParams','payTo','tokens','signinOpen','supportEmail','walletConnectProjectId']);
  assert.equal(mainnet.enabled,true);assert.equal(mainnet.testnet,false);assert.equal(mainnet.chainId,56);assert.equal(mainnet.payTo,'0x4274907CE85E100a5EbAe1f7286DeB5083a52e98');
  assert.deepEqual(mainnet.tokens,[{symbol:'USDT',address:'0x55d398326f99059fF775485246999027B3197955',decimals:18},{symbol:'USDC',address:'0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',decimals:18}]);
- assert.equal(mainnet.addChainParams.chainId,'0x38');assert.equal(mainnet.signinOpen,false);assert.equal(mainnet.supportEmail,'ops@example.com');
+ assert.equal(mainnet.addChainParams.chainId,'0x38');assert.equal(mainnet.signinOpen,false);assert.equal(mainnet.supportEmail,null,'an admin address is never shown to customers');
+ assert.equal(billingConfig(accountsConfig({...env,SUPPORT_EMAIL:'Help@Example.com'})).supportEmail,'help@example.com');
  assert.equal(mainnet.walletConnectProjectId,'0123456789abcdef0123456789abcdef');
  const testnet=billingConfig(accountsConfig({...env,PAYMENT_NETWORK:'bsc-testnet'}));
  assert.equal(testnet.testnet,true);assert.equal(testnet.network,'bsc-testnet');assert.equal(testnet.chainId,97);

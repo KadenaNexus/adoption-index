@@ -20,18 +20,20 @@ export default function ReportForm({ indicator: preset, email: accountEmail }: {
   const [error, setError] = useState<{ message: string; field: Field | null } | null>(null);
   // The address a reply may go to once sent ('' when none was given); null while the form is showing.
   const [sentTo, setSentTo] = useState<string | null>(null);
-  const sentHeading = useRef<HTMLHeadingElement>(null), another = useRef(false);
+  const sentHeading = useRef<HTMLHeadingElement>(null), sendButton = useRef<HTMLButtonElement>(null), another = useRef(false);
   // Whichever view replaces the other takes focus: the confirmation heading, or the first field for another report.
   useEffect(() => {
     if (sentTo !== null) sentHeading.current?.focus();
     else if (another.current) { another.current = false; document.getElementById('report-indicator')?.focus(); }
   }, [sentTo]);
   // Focus is moved after the message renders, so it is read as part of the field. A field that already has focus (Enter
-  // pressed in it) is blurred first, or the screen reader would not read it again.
+  // pressed in it) is blurred first, or the screen reader would not read it again. Any other error returns focus to the
+  // button, which lost it while it was disabled.
   useEffect(() => {
-    const field = error?.field ? document.getElementById(`report-${error.field}`) : null;
-    if (field === document.activeElement) field?.blur();
-    field?.focus();
+    if (!error) return;
+    const field = error.field ? document.getElementById(`report-${error.field}`) : null;
+    if (field) { if (field === document.activeElement) field.blur(); field.focus(); }
+    else if (document.activeElement === document.body) sendButton.current?.focus();
   }, [error]);
 
   const fail = (code: string | undefined) => setError({ message: errorMessage(code, 'report'), field: code && Object.hasOwn(FIELD_OF, code) ? FIELD_OF[code] : null });
@@ -74,7 +76,7 @@ export default function ReportForm({ indicator: preset, email: accountEmail }: {
     </div>
     <div className="report-field">
       <label className="field-label" htmlFor="report-evidence">Supporting link or transaction ID</label>
-      <input id="report-evidence" className="field" type="text" required autoComplete="off" spellCheck={false} maxLength={EVIDENCE_MAX} value={evidence} onChange={e => setEvidence(e.target.value)}
+      <input id="report-evidence" className="field" type="text" required autoComplete="off" autoCapitalize="off" autoCorrect="off" spellCheck={false} maxLength={EVIDENCE_MAX} value={evidence} onChange={e => setEvidence(e.target.value)}
         aria-invalid={invalid('evidence')} aria-describedby={describedBy('evidence', 'report-evidence-hint')}/>
       <p id="report-evidence-hint" className="field-hint">For example a block explorer page, a request key or transaction hash, or a GitHub link.</p>
       {fieldError('evidence')}
@@ -92,6 +94,6 @@ export default function ReportForm({ indicator: preset, email: accountEmail }: {
       <input id="report-hp" type="text" name="kce_hp" tabIndex={-1} autoComplete="off" data-1p-ignore="" data-lpignore="true" data-bwignore="" data-form-type="other" value={hp} onChange={e => setHp(e.target.value)}/>
     </div>
     {error && !error.field && <p id="report-error" className="form-error" role="alert">{error.message}</p>}
-    <button className="button" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send report'}</button>
+    <button ref={sendButton} className="button" type="submit" disabled={busy}>{busy ? 'Sending…' : 'Send report'}</button>
   </form>;
 }

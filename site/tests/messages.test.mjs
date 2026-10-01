@@ -49,7 +49,7 @@ test('report messages say how to fix the field or when to try again', () => {
   assert.match(errorMessage('invalid_evidence', 'report'), /supporting link or transaction ID/);
   assert.match(errorMessage('invalid_email', 'report'), /or leave it blank/);
   assert.match(errorMessage('rate_limit', 'report'), /up to 5 reports an hour and 10 a day/);
-  assert.match(errorMessage('reports_busy', 'report'), /try again tomorrow/);
+  assert.match(errorMessage('reports_busy', 'report'), /in the last 24 hours, so the form is paused/);
   assert.doesNotMatch(errorMessage('accounts_disabled', 'report'), /Accounts/, 'a report is not about an account');
   assert.match(errorMessage('not_found', 'report-resolve'), /report was not found/);
   assert.match(errorMessage('already_resolved', 'report-resolve'), /report is already resolved/);

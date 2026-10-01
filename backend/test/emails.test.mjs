@@ -87,8 +87,15 @@ test('the data issue notice escapes the visitor text, keeps its line breaks, sho
  const base={id:12,indicator:'TVL',description:'Line <one>\n\nLine "two" & more',evidence:'https://explorer.example/tx/<x>',evidenceUrl:'https://explorer.example/tx/%3Cx%3E',email:'reader@example.com',createdAt:'2026-10-01T10:05:00.000Z',publicSiteUrl:site};
  const {subject,text,html}=dataReport(base);
  assert.equal(subject,'Data issue report #12: TVL');
- assert.ok(text.includes('Line <one>\n\nLine "two" & more'),'the text version is the report as typed');
+ assert.ok(text.includes('The visitor’s description:\n\n> Line <one>\n>\n> Line "two" & more\n'),'the text version marks every line as quoted');
  assert.ok(html.includes('Line &lt;one&gt;\n\nLine &quot;two&quot; &amp; more')&&html.includes('white-space:pre-wrap'),'escaped, line breaks kept');
+ // The real button and the warning come before the visitor's text, so that text cannot pose as the email's own.
+ assert.ok(text.indexOf(`${site}/signin?next=/admin%23reports`)<text.indexOf('> Line <one>')&&text.indexOf('check a link before you open it')<text.indexOf('> Line <one>'));
+ assert.ok(html.indexOf(`href="${site}/signin?next=/admin%23reports"`)<html.indexOf('Line &lt;one&gt;'));
+ const lure=dataReport({...base,description:'TVL looks wrong.\n\nOpen the reports:\nhttps://evil.example/x\n\n--\nKadena'+'\n'.repeat(1700)+' \t\n \n.'});
+ assert.ok(lure.text.split('\n').length<50,'runs of blank lines collapse, so nothing is pushed out of view');
+ assert.ok(lure.text.includes('> Open the reports:\n> https://evil.example/x')&&!/^Open the reports:\nhttps:\/\/evil/m.test(lure.text),'a fake link stays quoted');
+ assert.ok(!lure.html.includes('\n\n\n'),'and the HTML has no long blank runs either');
  assert.ok(html.includes('href="https://explorer.example/tx/%3Cx%3E" style="color:#a3404e">https://explorer.example/tx/%3Cx%3E</a>')&&!html.includes('<x>'),'the visible link text is the address it opens');
  assert.match(text,/^Supporting link or ID: https:\/\/explorer\.example\/tx\/%3Cx%3E$/m);
  // The admin page needs a sign-in on a phone or in a mail app, so the button goes through it.
@@ -99,6 +106,6 @@ test('the data issue notice escapes the visitor text, keeps its line breaks, sho
  const plain=dataReport({...base,evidence:'tx 0xabc',evidenceUrl:null,email:null});
  assert.ok(!plain.html.includes('href="tx')&&plain.text.includes('Supporting link or ID: tx 0xabc\n'),'text evidence is never a link');
  assert.match(plain.text,/^Follow-up email: None given$/m);
- assert.ok(!plain.text.includes('10th report'));
- assert.match(dataReport({...base,lastNotice:true}).text,/This is the 10th report in 24 hours\. Until that count drops, new reports appear only on the admin page/);
+ assert.ok(!plain.text.includes('That makes'));
+ assert.match(dataReport({...base,lastNotice:10}).text,/That makes 10 reports in 24 hours\. Until the count drops, new reports appear only on the admin page/);
 });

@@ -61,7 +61,7 @@ export const MESSAGES: Record<string, string> = {
   invalid_indicator: 'Choose the indicator the issue is about.',
   invalid_description: 'Describe the issue in 10 to 2,000 characters.',
   invalid_evidence: 'Add a supporting link or transaction ID, up to 500 characters.',
-  reports_busy: 'We’ve had an unusual number of reports today, so the form is paused. Please try again tomorrow.',
+  reports_busy: 'We’ve had an unusual number of reports in the last 24 hours, so the form is paused. Please try again in a few hours.',
 };
 
 const CONTEXT: Partial<Record<MessageContext, Record<string, string>>> = {

@@ -61,7 +61,7 @@ test('a report needs no session: it is stored cleaned, without the visitor addre
  const mail=(await h.db.query('SELECT * FROM email_outbox ORDER BY to_email')).rows;
  assert.deepEqual(mail.map(m=>[m.kind,m.to_email,m.dedupe_key,m.status]),[['data_report','boss@example.com',`report:${row.id}:boss@example.com`,'queued'],['data_report','second@example.com',`report:${row.id}:second@example.com`,'queued']]);
  assert.equal(mail[0].subject,`Data issue report #${row.id}: TVL (total value locked)`);
- assert.ok(mail[0].text_body.includes('First line\nsecond <b>line</b>\n\tindented'),'the text email keeps the line breaks');
+ assert.ok(mail[0].text_body.includes('> First line\n> second <b>line</b>\n> \tindented'),'the text email quotes the report, line breaks kept');
  assert.ok(mail[0].html_body.includes('second &lt;b&gt;line&lt;/b&gt;')&&!mail[0].html_body.includes('<b>line'),'the HTML email escapes the visitor text');
  assert.ok(mail[0].text_body.includes('reader@example.com')&&mail[0].text_body.includes('http://127.0.0.1:5173/signin?next=/admin%23reports'));
  assert.ok(mail[0].html_body.includes('href="https://explorer.example/tx/abc"'),'an https evidence link is clickable');
@@ -126,7 +126,7 @@ test('only the first 10 reports in 24 hours are emailed; the 10th says so',{skip
  for(let i=0;i<12;i++)assert.equal((await report(h,{},{ip:`198.51.100.${i}`})).status,202);
  const mail=(await h.db.query("SELECT text_body FROM email_outbox WHERE kind='data_report' ORDER BY id")).rows;
  assert.equal(mail.length,10);
- assert.ok(mail[9].text_body.includes('This is the 10th report in 24 hours.')&&!mail[8].text_body.includes('10th report'));
+ assert.ok(mail[9].text_body.includes('That makes 10 reports in 24 hours.')&&!mail[8].text_body.includes('That makes'));
  assert.equal(await count(h.db,'SELECT count(*)::int AS n FROM data_reports'),12,'every report is still stored');
  h.advance(DAY);
  assert.equal((await report(h,{},{ip:'198.51.100.99'})).status,202);
@@ -166,12 +166,33 @@ test('without admins the support address gets the notice; with neither, the repo
  assert.equal(await count(none.db,'SELECT count(*)::int AS n FROM email_outbox'),0);
 });
 
-test('a signed-in reporter is not linked to the report',{skip:!connection},async t=>{
+test('a signed-in reporter is not linked to the report, not even by when the session was last used',{skip:!connection},async t=>{
  const h=await harness(t),reader=await h.user('reader@example.com',{subscribed:true});
+ const seen=new Date(h.clock.now.getTime()-6*MINUTE);
+ await h.db.query('UPDATE sessions SET last_seen_at=$1',[seen]);
  assert.equal((await report(h,{},{session:reader.session})).status,202);
  const row=(await h.db.query('SELECT * FROM data_reports')).rows[0];
  assert.equal(row.email,null,'only an email typed into the form is kept');
  assert.ok(!Object.keys(row).some(column=>/user|session/.test(column)));
+ const lastSeen=async()=>(await h.db.query('SELECT last_seen_at FROM sessions')).rows[0].last_seen_at.getTime();
+ assert.equal(await lastSeen(),seen.getTime(),'reading the session for a report does not record its use');
+ assert.equal((await h.call('GET /account',{session:reader.session})).status,200);
+ assert.equal(await lastSeen(),h.clock.now.getTime(),'any other route still records it');
+});
+
+test('a report waits for a migration holding the outbox instead of deadlocking with it',{skip:!connection},async t=>{
+ const h=await harness(t),c=await h.db.connect();
+ try{
+  // What a re-run of schema.sql does: lock email_outbox (its index), then data_reports (its indexes), until COMMIT.
+  await c.query('BEGIN');await c.query("SET LOCAL lock_timeout='5s'");
+  await c.query('LOCK TABLE email_outbox IN SHARE MODE');
+  const pending=report(h);
+  for(let i=0;i<250&&!(await h.db.query("SELECT 1 FROM pg_locks WHERE NOT granted AND relation='email_outbox'::regclass")).rowCount;i++)await new Promise(resolve=>setTimeout(resolve,20));
+  await c.query('LOCK TABLE data_reports IN SHARE MODE');
+  await c.query('COMMIT');
+  assert.equal((await pending).status,202);
+ }finally{c.release()}
+ assert.equal(await count(h.db,"SELECT count(*)::int AS n FROM email_outbox WHERE kind='data_report'"),1);
 });
 
 test('admins see reports open first without the address hash, and resolve each once with an audited note',{skip:!connection},async t=>{
