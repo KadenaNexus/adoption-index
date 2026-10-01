@@ -47,7 +47,7 @@ export function publicBaseline(snapshot){
 /** Pro data: an API key, or the website's key plus a session with an active subscription. */
 const PRO_PATHS=['/index/history','/metrics/breakdown','/export.csv'];
 /** Account routes that work without a session. Every other route needs one, and /admin/ routes need an admin. */
-export const PUBLIC_ROUTES=new Set(['POST /auth/request-link','POST /auth/verify','POST /auth/verify-code','POST /auth/logout','GET /billing/config']);
+export const PUBLIC_ROUTES=new Set(['POST /auth/request-link','POST /auth/verify','POST /auth/verify-code','POST /auth/logout','GET /billing/config','POST /reports']);
 export function createServer(pool,{cfg=accountsConfig(),mailer=createMailer(cfg),now=()=>new Date()}={}){
  const origins=new Set((process.env.CORS_ORIGINS??'https://kadena.ws').split(',').map(s=>s.trim()));
  const rates=new Map();

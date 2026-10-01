@@ -6,6 +6,7 @@ import { parseOverview } from '../../lib/admin-view';
 import { backendFetch } from '../../lib/backend';
 import { getAccountState, getSessionToken, requestClientIp } from '../../lib/session';
 import ExtendForm from './extend-form';
+import ReportResolveForm from './report-resolve-form';
 import ResolveForm from './resolve-form';
 export const metadata: Metadata = { title: 'Admin | Kadena Community Edition Adoption Index', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,7 @@ export default async function Admin() {
       <div className="notice-actions"><Link className="button" href="/admin">Try again</Link></div></section>
   </PageShell>;
   const open = data.counts.unresolvedTransfers ?? data.unmatched.filter(u => !u.resolved).length;
+  const openReports = data.counts.openReports ?? data.reports.filter(r => !r.resolved).length;
   return <PageShell banner={banner}>
     <section className="hero"><p className="eyebrow">Admin</p><h1>Payments and subscriptions</h1></section>
     <dl className="admin-counts">
@@ -33,6 +35,7 @@ export default async function Admin() {
       <div><dt>Confirmed payments</dt><dd>{count(data.counts.confirmedPayments)}</dd></div>
       <div><dt>Pending payments</dt><dd>{count(data.counts.pendingPayments)}</dd></div>
       <div><dt>Unmatched, open</dt><dd>{count(open)}</dd></div>
+      <div><dt>Reports, open</dt><dd>{count(openReports)}</dd></div>
       <div><dt>Emails queued</dt><dd>{count(data.counts.queuedEmails)}</dd></div>
       <div><dt>Emails failed</dt><dd>{count(data.counts.failedEmails)}</dd></div>
     </dl>
@@ -67,6 +70,21 @@ export default async function Admin() {
           <td>{u.note && <span className="resolved-note">{u.note}</span>}{!u.resolved && u.logIndex >= 0 && <ResolveForm network={u.network} txHash={u.txHash} logIndex={u.logIndex}/>}</td>
         </tr>)}</tbody>
       </table></div> : <p className="account-meta">No unmatched transfers.</p>}
+    </section>
+
+    <section className="admin-section" id="reports" aria-labelledby="reports-title">
+      <h2 id="reports-title">Data issue reports <small>{openReports} open</small></h2>
+      <p className="account-meta">Sent from the “Report a data issue” links beside the indicators and on the methodology page. The first 10 reports in any 24 hours are also emailed to the admins. Check each one, reply if an email was given, then resolve it with a note.</p>
+      {data.reports.length ? <div className="table-wrap"><table className="admin-table">
+        <thead><tr><th scope="col">Received</th><th scope="col">Indicator</th><th scope="col">Issue</th><th scope="col">Link or ID</th><th scope="col">Email</th><th scope="col">Resolution</th></tr></thead>
+        <tbody>{data.reports.map(r => <tr key={r.key}>
+          <td className="nowrap">{r.date}<small>#{r.id}</small></td><td>{r.indicator}</td>
+          <td><span className="report-text" dir="auto">{r.description}</span></td>
+          <td>{r.evidenceUrl ? <a className="text-link break-all" href={r.evidenceUrl} target="_blank" rel="noopener noreferrer nofollow">{r.evidenceUrl}</a> : <span className="mono break-all">{r.evidence}</span>}</td>
+          <td className="break-all">{r.mailto ? <a className="text-link" href={r.mailto}>{r.email}</a> : r.email ?? <small>None given</small>}</td>
+          <td>{r.note && <span className="resolved-note">{r.note}{r.resolvedBy && <small>{r.resolvedBy}</small>}</span>}{!r.resolved && r.id > 0 && <ReportResolveForm id={r.id}/>}</td>
+        </tr>)}</tbody>
+      </table></div> : <p className="account-meta">No reports yet.</p>}
     </section>
 
     <section className="admin-section" aria-labelledby="subs-title">

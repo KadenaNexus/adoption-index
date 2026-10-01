@@ -334,6 +334,26 @@ select.field { padding-right: 32px; }
 .callout { padding: 16px 18px; background: #fdf3f4; border-left: 3px solid var(--crimson); border-radius: 0 10px 10px 0; }
 .methodology > .text-link { margin-top: 40px; }
 
+/* Report a data issue: a quiet link beside each indicator, and the form it opens */
+.report-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; line-height: 16px; color: var(--muted); }
+.report-link:hover { color: var(--crimson); text-decoration: underline; }
+.report-link svg { flex-shrink: 0; }
+.score-card .report-link { margin-top: 18px; }
+.section > .report-link { margin-top: 14px; }
+/* Pro cards: the link sits at the bottom, level across a row whatever the caption length. */
+.metric-card:has(.report-link) { display: flex; flex-direction: column; }
+.metric-card .report-link { align-self: flex-start; margin-top: auto; padding-top: 12px; }
+.method-metrics .report-link { display: flex; gap: 5px; width: fit-content; margin-top: 14px; font-size: 12px; color: var(--muted); }
+.method-metrics .report-link:hover { color: var(--crimson); }
+.report-card { max-width: 600px; }
+.report-field + .report-field { margin-top: 20px; }
+.field-optional { font-weight: 400; color: var(--muted); }
+.field-hint { margin-top: 6px; font-size: 12px; line-height: 17px; color: var(--muted); }
+textarea.field { min-height: 148px; resize: vertical; }
+.report-form .button { width: 100%; margin-top: 24px; }
+.hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.report-text { display: block; min-width: 220px; max-width: 380px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

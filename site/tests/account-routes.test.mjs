@@ -12,6 +12,8 @@ import { POST as addAlert } from '../app/api/account/alerts/route.ts';
 import { POST as deleteAlert } from '../app/api/account/alerts/delete/route.ts';
 import { POST as extend } from '../app/api/admin/extend/route.ts';
 import { POST as resolve } from '../app/api/admin/resolve/route.ts';
+import { POST as sendReport } from '../app/api/reports/route.ts';
+import { POST as resolveReport } from '../app/api/admin/reports/resolve/route.ts';
 import { GET as exportCsv } from '../app/api/export/route.ts';
 
 const EXPIRES = '2026-10-29T12:00:00.000Z';
@@ -71,7 +73,8 @@ test('every POST route refuses cross-site requests before calling the backend', 
   await withBackend(() => ({ status: 200, json: {} }), async backend => {
     const routes = [[requestLink, { email: 'a@b.co' }], [verify, { token: TOKEN }], [verifyCode, { email: 'a@b.co', code: '123456' }], [logout, {}],
       [addAlert, { direction: 'above', threshold: 60 }], [deleteAlert, { id: 1 }], [extend, { email: 'a@b.co', days: 30, note: 'x' }],
-      [resolve, { network: 'bsc', txHash: '0x' + 'a'.repeat(64), logIndex: 0, note: 'x' }]];
+      [resolve, { network: 'bsc', txHash: '0x' + 'a'.repeat(64), logIndex: 0, note: 'x' }],
+      [sendReport, { indicator: 'tvl', description: 'The TVL card looks too low.', evidence: 'https://explorer.example/tx/1' }], [resolveReport, { id: 1, note: 'x' }]];
     const attacks = [{ origin: 'https://evil.test', fetchSite: 'cross-site' }, { origin: 'https://evil.test', fetchSite: null }, { origin: null, fetchSite: 'same-site' },
       { origin: null, fetchSite: null }, { origin: 'https://adoption.test', host: 'other.test', fetchSite: null }, { origin: 'null', fetchSite: null }];
     for (const [handler, body] of routes) for (const attack of attacks) {

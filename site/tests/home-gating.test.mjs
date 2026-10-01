@@ -30,14 +30,15 @@ test('the home page makes its only Pro call after the subscriber check', () => {
 });
 
 test('shared components never fetch Pro data themselves', () => {
-  for (const file of ['app/index-view.tsx', 'app/history-chart.tsx', 'app/chart-grid.tsx', 'app/plan-picker.tsx', 'app/layout.tsx'])
+  for (const file of ['app/index-view.tsx', 'app/history-chart.tsx', 'app/chart-grid.tsx', 'app/plan-picker.tsx', 'app/layout.tsx', 'app/report-link.tsx'])
     assert.doesNotMatch(source(file), /getProData|backendFetch|backendResponse|getAccount/, file);
   // The header reads only the cookie; account data comes from the pages that need it.
   assert.match(source('app/index-view.tsx'), /getSessionToken\(\)/);
 });
 
 test('client components never import the server-only backend client', () => {
-  const clients = ['app/signin/signin-form.tsx', 'app/signin/verify/verify-form.tsx', 'app/account/alerts-form.tsx', 'app/account/sign-out-button.tsx', 'app/admin/extend-form.tsx', 'app/admin/resolve-form.tsx', 'app/plan-picker.tsx', 'app/history-chart.tsx'];
+  const clients = ['app/signin/signin-form.tsx', 'app/signin/verify/verify-form.tsx', 'app/account/alerts-form.tsx', 'app/account/sign-out-button.tsx', 'app/admin/extend-form.tsx', 'app/admin/resolve-form.tsx', 'app/plan-picker.tsx', 'app/history-chart.tsx',
+    'app/report/report-form.tsx', 'app/admin/report-resolve-form.tsx'];
   for (const file of clients) {
     const text = source(file);
     assert.match(text, /^'use client';/, file);

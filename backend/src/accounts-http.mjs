@@ -1,5 +1,6 @@
 import {requestLoginLink,verifyLinkToken,verifyLoginCode,revokeSession,accountView,addAlert,deleteAlert} from './accounts.mjs';
-import {adminOverview,adminExtend,resolveUnmatched} from './admin.mjs';
+import {adminOverview,adminExtend,resolveUnmatched,resolveReport} from './admin.mjs';
+import {submitReport} from './reports.mjs';
 // server.mjs enforces the site key on all of these, a session on every route outside PUBLIC_ROUTES and an admin on
 // /admin/; handlers still ask for what they use.
 export const routes={
@@ -11,7 +12,10 @@ export const routes={
  'GET /account':async ctx=>({status:200,body:await accountView(ctx.db,ctx.cfg,ctx.requireSession())}),
  'POST /account/alerts':async ctx=>({status:201,body:await addAlert(ctx.db,ctx.requireSubscriber().user.id,ctx.body)}),
  'POST /account/alerts/delete':async ctx=>({status:200,body:await deleteAlert(ctx.db,ctx.requireSession().user.id,ctx.body)}),
+ // The "Report a data issue" form: anyone may send one. A subscriber's session only lifts the daily cap; nothing links it to the report.
+ 'POST /reports':async({db,cfg,body,clientIp,session,now})=>({status:202,body:await submitReport(db,cfg,body,{clientIp,subscriber:session?.subscription?.active===true,now})}),
  'GET /admin/overview':async ctx=>{ctx.requireAdmin();return {status:200,body:await adminOverview(ctx.db,ctx.cfg,{now:ctx.now})}},
  'POST /admin/subscriptions/extend':async ctx=>({status:200,body:await adminExtend(ctx.db,ctx.requireAdmin().user.email,ctx.body,{now:ctx.now})}),
  'POST /admin/unmatched/resolve':async ctx=>({status:200,body:await resolveUnmatched(ctx.db,ctx.cfg,ctx.requireAdmin().user.email,ctx.body,{now:ctx.now})}),
+ 'POST /admin/reports/resolve':async ctx=>({status:200,body:await resolveReport(ctx.db,ctx.requireAdmin().user.email,ctx.body,{now:ctx.now})}),
 };

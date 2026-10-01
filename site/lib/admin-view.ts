@@ -1,6 +1,7 @@
 // Parses GET /admin/overview for the admin page. Amounts come in token units and flags already decided by the backend.
 import { formatDate, paymentStatus, planName, safeHttpsUrl, shortHash, type Tone } from './account-view.ts';
 import { record, type Payload } from './payload.ts';
+import { indicatorLabel } from './report.ts';
 
 const str = (row: Payload, name: string): string => { const v = row[name]; return typeof v === 'string' ? v : typeof v === 'number' ? String(v) : ''; };
 const num = (row: Payload, name: string): number | null => { const v = row[name]; return typeof v === 'number' && Number.isFinite(v) ? v : null; };
@@ -11,8 +12,10 @@ export type AdminUnmatched = { key: string; network: string; txHash: string; has
   note: string | null; resolved: boolean; explorerUrl: string | null };
 export type AdminSubscription = { key: string; email: string; plan: string; started: string; expires: string; active: boolean };
 export type AdminAction = { key: string; date: string; admin: string; action: string; summary: string };
-export type AdminCounts = { users: number | null; activeSubscriptions: number | null; confirmedPayments: number | null; pendingPayments: number | null; unresolvedTransfers: number | null; queuedEmails: number | null; failedEmails: number | null };
-export type AdminOverview = { testnet: boolean; payments: AdminPayment[]; unmatched: AdminUnmatched[]; subscriptions: AdminSubscription[]; actions: AdminAction[]; counts: AdminCounts };
+export type AdminReport = { key: string; id: number; date: string; indicator: string; description: string; evidence: string; evidenceUrl: string | null; email: string | null; mailto: string | null;
+  resolved: boolean; note: string | null; resolvedBy: string | null };
+export type AdminCounts = { users: number | null; activeSubscriptions: number | null; confirmedPayments: number | null; pendingPayments: number | null; unresolvedTransfers: number | null; queuedEmails: number | null; failedEmails: number | null; openReports: number | null };
+export type AdminOverview = { testnet: boolean; payments: AdminPayment[]; unmatched: AdminUnmatched[]; subscriptions: AdminSubscription[]; actions: AdminAction[]; reports: AdminReport[]; counts: AdminCounts };
 
 function payment(row: Payload, i: number): AdminPayment {
   const network = str(row, 'network'), hash = str(row, 'txHash'), status = str(row, 'status'), token = str(row, 'token');
@@ -33,11 +36,20 @@ function subscription(row: Payload, i: number): AdminSubscription {
   return { key: `${str(row, 'email')}:${i}`, email: str(row, 'email'), plan: planName(str(row, 'plan')), started: formatDate(str(row, 'startedAt')),
     expires: formatDate(str(row, 'expiresAt')), active: row.active === true };
 }
-const ACTIONS: Record<string, string> = { extend_subscription: 'Extended subscription', resolve_unmatched: 'Resolved transfer' };
+const ACTIONS: Record<string, string> = { extend_subscription: 'Extended subscription', resolve_unmatched: 'Resolved transfer', resolve_report: 'Resolved data report' };
 function action(row: Payload, i: number): AdminAction {
   const d = record(row.details) ?? {}, name = str(row, 'action');
-  const parts = [str(d, 'email'), d.days !== undefined ? `+${str(d, 'days')} days` : '', str(d, 'txHash') ? shortHash(str(d, 'txHash')) : '', str(d, 'note') ? `“${str(d, 'note').slice(0, 140)}”` : ''].filter(Boolean);
+  const parts = [str(d, 'email'), d.days !== undefined ? `+${str(d, 'days')} days` : '', str(d, 'txHash') ? shortHash(str(d, 'txHash')) : '', d.reportId !== undefined ? `Report #${str(d, 'reportId')}` : '',
+    str(d, 'note') ? `“${str(d, 'note').slice(0, 140)}”` : ''].filter(Boolean);
   return { key: `${str(row, 'id')}:${i}`, date: formatDate(str(row, 'createdAt')), admin: str(row, 'adminEmail'), action: ACTIONS[name] ?? name, summary: parts.join(' · ') };
+}
+// A mailto: link only for a plain address: `?`, `&`, `=` or `%` could add headers or recipients in a mail client.
+const MAILTO = /^[a-z0-9._+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+function report(row: Payload, i: number): AdminReport {
+  const email = str(row, 'email') || null;
+  return { key: `${str(row, 'id')}:${i}`, id: num(row, 'id') ?? -1, date: formatDate(str(row, 'createdAt')), indicator: indicatorLabel(str(row, 'indicator')),
+    description: str(row, 'description'), evidence: str(row, 'evidence'), evidenceUrl: safeHttpsUrl(row.evidenceUrl), email, mailto: email && MAILTO.test(email) ? `mailto:${email}` : null,
+    resolved: row.resolved === true, note: str(row, 'resolvedNote') || null, resolvedBy: str(row, 'resolvedBy') || null };
 }
 const rows = (value: unknown): Payload[] => Array.isArray(value) ? value.map(record).filter((r): r is Payload => !!r) : [];
 
@@ -47,9 +59,12 @@ export function parseOverview(data: unknown): AdminOverview | null {
   const list = rows(p.unmatched).map(unmatched);
   // Unresolved transfers first, whatever order the backend used.
   const ordered = [...list.filter(u => !u.resolved), ...list.filter(u => u.resolved)];
+  // Reports are optional, so the page still loads from a backend that predates them.
+  const reports = rows(p.reports).map(report);
   const c = record(p.counts) ?? {};
   return { testnet: p.testnet === true, payments: rows(p.payments).map(payment), unmatched: ordered, subscriptions: rows(p.subscriptions).map(subscription),
-    actions: rows(p.actions).map(action),
+    actions: rows(p.actions).map(action), reports: [...reports.filter(r => !r.resolved), ...reports.filter(r => r.resolved)],
     counts: { users: num(c, 'users'), activeSubscriptions: num(c, 'activeSubscriptions'), confirmedPayments: num(c, 'confirmedPayments'),
-      pendingPayments: num(c, 'pendingPayments'), unresolvedTransfers: num(c, 'unresolvedTransfers'), queuedEmails: num(c, 'queuedEmails'), failedEmails: num(c, 'failedEmails') } };
+      pendingPayments: num(c, 'pendingPayments'), unresolvedTransfers: num(c, 'unresolvedTransfers'), queuedEmails: num(c, 'queuedEmails'), failedEmails: num(c, 'failedEmails'),
+      openReports: num(c, 'openReports') } };
 }

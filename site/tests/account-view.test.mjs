@@ -120,7 +120,8 @@ test('admin overview in the shape the backend sends: preformatted amounts, resol
   assert.deepEqual(view.unmatched.map(u => [u.logIndex, u.amount, u.resolved, u.block]), [[2, '9', false, '2'], [3, '123 base units of', false, '3'], [1, '25.5', true, '1']], 'unresolved first; a processing error still needs an admin');
   assert.deepEqual([view.unmatched[0].txHash, view.unmatched[0].from, view.unmatched[0].seen], [hash, '0x' + '4'.repeat(40), '29 Sep 2026'], 'the full hash is kept for the resolve call');
   assert.deepEqual(view.subscriptions.map(s => [s.email, s.plan, s.expires, s.active]), [['a@b.co', 'Monthly', '29 Oct 2026', true], ['x@y.co', 'Complimentary', '1 Feb 2026', false]]);
-  assert.deepEqual(view.counts, { users: 3, activeSubscriptions: 1, confirmedPayments: 1, pendingPayments: 1, unresolvedTransfers: 2, queuedEmails: 0, failedEmails: 1 });
+  assert.deepEqual(view.counts, { users: 3, activeSubscriptions: 1, confirmedPayments: 1, pendingPayments: 1, unresolvedTransfers: 2, queuedEmails: 0, failedEmails: 1, openReports: null });
+  assert.deepEqual(view.reports, [], 'a backend without reports still parses');
   assert.deepEqual(view.actions.map(a => [a.date, a.admin, a.action, a.summary]), [
     ['29 Sep 2026', 'naif@kadena.ws', 'Resolved transfer', `${shortHash(hash)} · “claimed”`], ['29 Sep 2026', 'naif@kadena.ws', 'Extended subscription', 'a@b.co · +30 days · “Binance withdrawal”']]);
   const bare = parseOverview({ payments: [], unmatched: [], subscriptions: [] });

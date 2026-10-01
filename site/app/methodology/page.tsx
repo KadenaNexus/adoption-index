@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { PageShell } from '../index-view';
+import ReportLink from '../report-link';
 import { getPublicIndex } from '../../lib/public-index';
 import { formatAmount } from '../../lib/metrics';
 export const metadata: Metadata = { title: 'Methodology | Kadena Community Edition Adoption Index' };
@@ -44,24 +45,29 @@ export default async function Methodology() {
         <p>Distinct senders and receivers within each UTC day and each of the 20 Pact mainnet chains, summed across chains and averaged over seven days. A gas-paying sender counts even when their included transaction fails. Transfer recipients come from executed token events; mining rewards are excluded.</p>
         <a href="https://api.chainweb-community.org/info">Community Edition Chainweb <ArrowUpRight size={13}/></a>
         <p className="caveat">An account on two chains counts once on each chain. Accounts are not people.</p>
+        <ReportLink indicator="addresses"/>
       </div>
       <div><h3><span>02</span> New contracts <b>25%</b></h3>
         <p>Unique new Pact modules over seven days. Identity includes the chain, namespace and module name. Upgrades and redeployments are stored separately; failed transactions and identified test artifacts are excluded.</p>
         <p className="caveat">A module inventory immediately before collection began distinguishes existing modules from new ones; older transaction history is not collected. Unresolved identities and unreviewed test candidates prevent the affected data from being published.</p>
+        <ReportLink indicator="contracts"/>
       </div>
       <div><h3><span>03</span> Total value locked <b>20%</b></h3>
         <p>Balances read directly from historical Pact state for a versioned registry covering Mercatus, KDSwap, KDLaunch staking, Chips, Cabinet and BroDEX. Pool assets, staked principal and funded order escrow are valued in KDA. Receipt tokens are not counted again.</p>
         <p>The index uses the seven-day mean in KDA. The USD display uses Mercatus’s KDA/USDT price, treating USDT as one USD; this is an approximation and does not affect the index.</p>
         <p className="caveat">The registry defines coverage. Pool-implied prices, particularly for illiquid tokens, are valuations rather than guaranteed sale proceeds. DefiLlama is a cross-check only.</p>
+        <ReportLink indicator="tvl"/>
       </div>
       <div><h3><span>04</span> Network hashrate <b>15%</b></h3>
         <p>The sum of proof of work from canonical block targets across all 20 chains, divided by the observed time and expressed in PH/s. The index uses its seven-day average.</p>
         <a href="https://github.com/kda-community/chainweb-node">Community node source <ArrowUpRight size={13}/></a>
+        <ReportLink indicator="hashrate"/>
       </div>
       <div><h3><span>05</span> Developer activity <b>10%</b></h3>
         <p>Seven-day human commit totals across public kda-community repositories, including forks. GitHub API records are collected at captured default-branch heads. Merge commits, identified bots and duplicate commit hashes are excluded. Dates use the UTC committer timestamp.</p>
         <a href="https://github.com/kda-community">kda-community on GitHub <ArrowUpRight size={13}/></a>
         <p className="caveat">Commits measure development activity, not its quality or eventual adoption.</p>
+        <ReportLink indicator="commits"/>
       </div>
     </div></section>
     <section><h2>Reading the index</h2><div className="levels"><div><b>40</b><span>20% below baseline</span></div><div><b>50</b><span>Baseline activity</span></div><div><b>100</b><span>Double the baseline</span></div><div><b>150</b><span>Triple the baseline</span></div></div>

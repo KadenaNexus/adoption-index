@@ -1,12 +1,14 @@
 // Human messages for the `error` codes the backend and the site's own route handlers return.
 // Checkout and wallet codes are mapped next to the checkout flow.
 
-export type MessageContext = 'signin' | 'code' | 'verify' | 'alerts' | 'alert-delete' | 'export' | 'admin' | 'resolve' | 'signout';
+export type MessageContext = 'signin' | 'code' | 'verify' | 'alerts' | 'alert-delete' | 'export' | 'admin' | 'resolve' | 'signout' | 'report' | 'report-resolve';
 
 const SOON = 'Subscriber sign-in opens soon. Today’s index stays free for everyone in the meantime.';
 const RETRY = 'Something went wrong on our side. Please try again.';
 const ALERT_INPUT = 'Choose above or below and enter a level from 0 to 100000, with at most one decimal place.';
 const TRANSFER_REF = 'That transfer reference is not valid. Reload the page and try again.';
+const NO_REPORTS = 'Reports can’t be sent right now. Please try again later.';
+const REPORT_GONE = 'That report was not found. Reload the page.';
 
 export const MESSAGES: Record<string, string> = {
   // Service and transport
@@ -55,6 +57,11 @@ export const MESSAGES: Record<string, string> = {
   unmatched_not_found: 'That transfer was not found. Reload the page.',
   transfer_not_found: 'That transfer was not found. Reload the page.',
   already_resolved: 'That transfer is already resolved.',
+  // Report a data issue
+  invalid_indicator: 'Choose the indicator the issue is about.',
+  invalid_description: 'Describe the issue in 10 to 2,000 characters.',
+  invalid_evidence: 'Add a supporting link or transaction ID, up to 500 characters.',
+  reports_busy: 'We’ve had an unusual number of reports today, so the form is paused. Please try again tomorrow.',
 };
 
 const CONTEXT: Partial<Record<MessageContext, Record<string, string>>> = {
@@ -62,6 +69,8 @@ const CONTEXT: Partial<Record<MessageContext, Record<string, string>>> = {
   'alert-delete': { not_found: 'That alert no longer exists.' },
   resolve: { not_found: 'That transfer was not found. Reload the page.' },
   export: { session_required: 'Please sign in again to download the CSV.' },
+  report: { invalid_email: 'Enter a valid email address, or leave it blank.', rate_limit: 'You can send up to 5 reports an hour and 10 a day. Please try again later.', accounts_disabled: NO_REPORTS, site_key_required: NO_REPORTS },
+  'report-resolve': { not_found: REPORT_GONE, invalid_id: REPORT_GONE, already_resolved: 'That report is already resolved. Reload the page.' },
 };
 
 /** A message for any error code; unknown codes get a generic message that names the code for support. */

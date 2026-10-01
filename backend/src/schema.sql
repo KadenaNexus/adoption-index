@@ -155,3 +155,12 @@ CREATE INDEX IF NOT EXISTS email_outbox_due ON email_outbox(next_attempt_at) WHE
 CREATE TABLE IF NOT EXISTS worker_state(key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS admin_actions(id bigserial PRIMARY KEY, admin_email text NOT NULL, action text NOT NULL, user_id bigint REFERENCES users(id), details jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
 INSERT INTO schema_migrations(version) VALUES(7) ON CONFLICT DO NOTHING;
+
+-- v8: reports from the public "Report a data issue" form. The email is optional. ip_hash serves only the rate limit: it
+-- is a keyed hash of the visitor's address (no address is stored), cleared two days on, when the next report arrives.
+-- The form requires the evidence; the table does not, so that rule can change without a migration. Once deployed this
+-- statement no longer changes the table: later changes go in a new block of ALTER statements, as in v6.
+CREATE TABLE IF NOT EXISTS data_reports(id bigserial PRIMARY KEY, indicator text NOT NULL CHECK(indicator IN ('index','addresses','contracts','tvl','hashrate','commits','other')), description text NOT NULL CHECK(length(description) BETWEEN 1 AND 2000), evidence text CHECK(evidence IS NULL OR length(evidence) BETWEEN 1 AND 500), email text CHECK(email IS NULL OR (email=lower(email) AND length(email) BETWEEN 3 AND 254)), ip_hash text, created_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz, resolved_by text, resolved_note text, CHECK((resolved_at IS NULL)=(resolved_note IS NULL)));
+CREATE INDEX IF NOT EXISTS data_reports_by_time ON data_reports(created_at);
+CREATE INDEX IF NOT EXISTS data_reports_by_ip ON data_reports(ip_hash,created_at) WHERE ip_hash IS NOT NULL;
+INSERT INTO schema_migrations(version) VALUES(8) ON CONFLICT DO NOTHING;

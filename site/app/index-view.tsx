@@ -11,6 +11,7 @@ import ChartGrid from './chart-grid';
 import HistoryChart from './history-chart';
 import LockIcon from './lock-icon';
 import PlanPicker from './plan-picker';
+import ReportLink from './report-link';
 
 // Decided by the cookie alone (no backend call); pages that need the account itself ask the backend.
 export async function SiteHeader() {
@@ -68,6 +69,7 @@ function ScoreCard({ index, subscriber, precise = null }: { index: PublicIndex; 
         <span className="delta-lock-label"><LockIcon size={14}/> 7-day and 30-day change: Pro</span>
       </Link>}
     {note && <p className="score-note">{note}</p>}
+    <ReportLink indicator="index"/>
   </section>;
 }
 
@@ -143,6 +145,7 @@ function Breakdown({ breakdown }: { breakdown: ProBreakdown }) {
         <p className="metric-value" title={d.title}>{d.value}</p>
         <div className="meter meter-baseline" role="img" aria-label={`${formatRatio(metric.ratio)} its baseline; the mark is the baseline`}><i className={`tone-${ratioTone(metric.ratio)}`} style={{ width: `${Math.min(100, metric.ratio * 50)}%` }}/></div>
         <p className="metric-caption">{d.parts.map((part, i) => <Fragment key={part}>{i ? ' · ' : ''}<span className="nowrap">{part}</span></Fragment>)}{d.wow && metric.weekOverWeek !== null && <> · <WeekChange change={formatChange(metric.weekOverWeek, 0)} suffix={d.wow}/></>}</p>
+        <ReportLink indicator={metric.id}/>
       </article>;
     })}
   </div>;
@@ -177,6 +180,8 @@ export default function IndexView({ index, subscriber, notice }: { index: Public
     <section className="section" aria-labelledby="inside-title">
       <h2 id="inside-title">What&apos;s Inside the Index</h2>
       {!subscriber ? <LockedBreakdown/> : subscriber.data ? <Breakdown breakdown={subscriber.data.breakdown}/> : unavailable}
+      {/* Free visitors can't use links inside the blurred cards, so theirs sits under them. */}
+      {!subscriber && <ReportLink/>}
     </section>
     {!subscriber && <AccessPanel/>}
   </PageShell>;

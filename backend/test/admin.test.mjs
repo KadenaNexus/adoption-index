@@ -83,8 +83,8 @@ test('admin overview: payments with email and over/underpaid markers, unresolved
  assert.equal(body.unmatched.find(u=>u.txHash===H('a')).resolvedNote,'refunded by hand');
  assert.deepEqual(body.subscriptions.map(s=>[s.email,s.plan,s.active]),[['alice@example.com','monthly',true],['bob@example.com','annual',false]]);
  assert.equal(body.subscriptions[0].expiresAt,new Date(now.getTime()+20*DAY).toISOString());
- assert.deepEqual(body.counts,{users:3,activeSubscriptions:1,confirmedPayments:1,pendingPayments:1,unresolvedTransfers:3,queuedEmails:0,failedEmails:0});
- assert.equal(body.network,'bsc');assert.equal(body.testnet,false);assert.deepEqual(body.actions,[]);
+ assert.deepEqual(body.counts,{users:3,activeSubscriptions:1,confirmedPayments:1,pendingPayments:1,unresolvedTransfers:3,queuedEmails:0,failedEmails:0,openReports:0});
+ assert.equal(body.network,'bsc');assert.equal(body.testnet,false);assert.deepEqual(body.actions,[]);assert.deepEqual(body.reports,[]);
 });
 
 test('admin extend: creates unknown users, extends from max(now, expiry), keeps the plan, validates input and audits',{skip:!connection},async t=>{

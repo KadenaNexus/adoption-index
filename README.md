@@ -79,7 +79,7 @@ Free visitors see today's score and how it compares with the baseline. Index Pro
   - The wallet is linked to the account with a free signature.
   - The payment counts once three public providers (two must agree) report the transaction final.
   - Payments made outside the checkout from a linked wallet are found by `kce-worker`.
-- **Admin page** (`/admin`, for `ADMIN_EMAILS`): payments, transfers from wallets not linked to an account, subscriptions, and a manual extend with an audit note.
+- **Admin page** (`/admin`, for `ADMIN_EMAILS`): payments, transfers from wallets not linked to an account, subscriptions, data issue reports, and a manual extend with an audit note.
 
 Configuration lives in `backend/.env`; every setting is described in `backend/.env.example`. After changing it:
 
@@ -95,3 +95,11 @@ Test on `PAYMENT_NETWORK=bsc-testnet` first; the checkout is then limited to adm
 ```sql
 DELETE FROM subscriptions WHERE user_id IN (SELECT DISTINCT user_id FROM payments WHERE network='bsc-testnet');
 ```
+
+## Data issue reports
+
+A small "Report a data issue" link sits beside the indicators: on the score card, in each Pro breakdown card (free visitors get one link under the locked breakdown) and in each input on `/methodology`. It opens `/report`, which asks for the indicator, a description, a supporting link or transaction ID, and an optional email for a reply.
+
+- Reports are listed on `/admin`, open ones first; an admin resolves each with a note, recorded in the audit log.
+- The first 10 reports in any 24 hours are also emailed to `ADMIN_EMAILS` (to `SUPPORT_EMAIL` when there are none). Nothing is ever emailed to the reporter.
+- Limits: 5 reports an hour and 10 a day per visitor, and 100 a day in total, which active subscribers are exempt from. IP addresses are not stored: the limit uses a keyed hash, which the next report clears once it is two days old.

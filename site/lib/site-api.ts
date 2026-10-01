@@ -123,6 +123,11 @@ export function resolveInput(body: Payload): Input<{ network: string; txHash: st
   if (logIndex === null) return { error: 'invalid_log_index' };
   return note.length >= 1 && note.length <= 500 ? { network, txHash, logIndex, note } : { error: 'invalid_note' };
 }
+export function reportResolveInput(body: Payload): Input<{ id: number; note: string }> {
+  const id = integer(body.id, 1, Number.MAX_SAFE_INTEGER), note = text(body.note, 500);
+  if (id === null) return { error: 'invalid_id' };
+  return note.length >= 1 && note.length <= 500 ? { id, note } : { error: 'invalid_note' };
+}
 // Checkout: any missing or oversized field is invalid_request.
 const field = (value: unknown, max: number) => { const v = text(value, max); return v.length >= 1 && v.length <= max ? v : null; };
 const absent = (value: unknown) => value === undefined || value === null;

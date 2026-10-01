@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {loginLink,paymentConfirmed,paymentUnderpaid,alertCrossed,renewalReminder,formatDay,formatDateTime} from '../src/emails.mjs';
+import {loginLink,paymentConfirmed,paymentUnderpaid,alertCrossed,renewalReminder,dataReport,formatDay,formatDateTime} from '../src/emails.mjs';
 const site='https://adoption.kadena.ws',support='help@kadena.ws',hash='0x'+'ab'.repeat(32),explorer=`https://bscscan.com/tx/${hash}`;
 const REFUND='Payments are non-refundable except where required by law.',RENEWAL='Nothing renews automatically';
 const all=supportEmail=>({
@@ -82,4 +82,23 @@ test('every value is HTML-escaped, including link targets',()=>{
 test('dates are formatted in UTC',()=>{
  assert.equal(formatDay('2026-06-29'),'29 June 2026');assert.equal(formatDateTime('2026-12-31T23:59:00Z'),'31 December 2026, 23:59 UTC');
  assert.equal(formatDay('not a date'),'not a date');
+});
+test('the data issue notice escapes the visitor text, keeps its line breaks, shows a link in its normalised form and has no account footer',()=>{
+ const base={id:12,indicator:'TVL',description:'Line <one>\n\nLine "two" & more',evidence:'https://explorer.example/tx/<x>',evidenceUrl:'https://explorer.example/tx/%3Cx%3E',email:'reader@example.com',createdAt:'2026-10-01T10:05:00.000Z',publicSiteUrl:site};
+ const {subject,text,html}=dataReport(base);
+ assert.equal(subject,'Data issue report #12: TVL');
+ assert.ok(text.includes('Line <one>\n\nLine "two" & more'),'the text version is the report as typed');
+ assert.ok(html.includes('Line &lt;one&gt;\n\nLine &quot;two&quot; &amp; more')&&html.includes('white-space:pre-wrap'),'escaped, line breaks kept');
+ assert.ok(html.includes('href="https://explorer.example/tx/%3Cx%3E" style="color:#a3404e">https://explorer.example/tx/%3Cx%3E</a>')&&!html.includes('<x>'),'the visible link text is the address it opens');
+ assert.match(text,/^Supporting link or ID: https:\/\/explorer\.example\/tx\/%3Cx%3E$/m);
+ // The admin page needs a sign-in on a phone or in a mail app, so the button goes through it.
+ assert.ok(text.includes(`${site}/signin?next=/admin%23reports`)&&html.includes(`href="${site}/signin?next=/admin%23reports"`));
+ assert.ok(!text.includes('/account')&&!html.includes('/account'),'a notice for the team has no manage-your-account link');
+ assert.match(text,/^Received: 1 October 2026, 10:05 UTC$/m);
+ assert.match(text,/^Follow-up email: reader@example\.com$/m);
+ const plain=dataReport({...base,evidence:'tx 0xabc',evidenceUrl:null,email:null});
+ assert.ok(!plain.html.includes('href="tx')&&plain.text.includes('Supporting link or ID: tx 0xabc\n'),'text evidence is never a link');
+ assert.match(plain.text,/^Follow-up email: None given$/m);
+ assert.ok(!plain.text.includes('10th report'));
+ assert.match(dataReport({...base,lastNotice:true}).text,/This is the 10th report in 24 hours\. Until that count drops, new reports appear only on the admin page/);
 });

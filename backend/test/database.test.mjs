@@ -143,7 +143,7 @@ test('growing collection preserves days, source evidence, identities and classif
 test('schema v7 metadata is durable and incompatible start/method changes preserve stored history',{skip:!connection},async t=>{
  const db=await isolated(t),window=windowFor();
  await baseline(db,0,window);
- assert.equal((await db.query('SELECT max(version)::int AS n FROM schema_migrations')).rows[0].n,7);
+ assert.equal((await db.query('SELECT max(version)::int AS n FROM schema_migrations')).rows[0].n,8);
  assert.deepEqual((await db.query('SELECT start_day,initial_history_days,method_version,history_policy FROM collection_state')).rows,[{start_day:COLLECTION_START,initial_history_days:90,method_version:METHOD_VERSION,history_policy:'growing-permanent'}]);
  await db.query('UPDATE collection_state SET start_day=$1',[addDays(COLLECTION_START,1)]);
  await assert.rejects(migrate(db),/Immutable collection metadata/);
