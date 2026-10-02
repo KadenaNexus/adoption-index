@@ -44,13 +44,13 @@ export function compactTvlObservation(value){
  return {...totals,protocols:protocols?.map(({id,chain,tvlKda})=>({id,chain,tvlKda})),
   evidence:{reads:evidence.reads.map(({chain,header,metadata})=>({chain,header,metadata}))}};
 }
-export function validateTvlObservation(value,row,version){
- if(value.registryVersion!==version||!value.evidence?.reads?.length)throw new Error('TVL registry or evidence is missing');
+export function validateTvlObservation(value,row,registry){
+ if(value.registryVersion!==registry.version||!value.evidence?.reads?.length)throw new Error('TVL registry or evidence is missing');
  for(const read of value.evidence.reads){
   const canonical=row.headers[String(read.chain)];
   if(!canonical||read.header.hash!==canonical.hash||read.header.height!==canonical.height||read.metadata?.prevBlockHash!==canonical.hash||read.metadata?.blockHeight!==canonical.height+1||read.metadata?.blockTime!==canonical.creationTime)throw new Error('TVL observation does not match the indexed canonical UTC boundary');
  }
- for(const chain of ['1','2','5'])if(!value.evidence.reads.some(read=>String(read.chain)===chain))throw new Error('TVL protocol-chain coverage is incomplete');
+ for(const chain of new Set(registry.protocols.map(protocol=>String(protocol.chain))))if(!value.evidence.reads.some(read=>String(read.chain)===chain))throw new Error('TVL protocol-chain coverage is incomplete');
  return value;
 }
 /** Publication is one transaction, after every day and every source validates. */
@@ -143,9 +143,9 @@ export async function collectMetricRows(db,{throughDay=completedDay(),tvlCollect
  for(const row of chainRows){
   const stored=(await db.query('SELECT payload FROM source_observations WHERE source=$1 AND day=$2 AND version=$3',['tvl',row.day,registry.version])).rows[0];
   let tvl=stored?.payload;
-  if(tvl){try{validateTvlObservation(tvl,row,registry.version)}catch{tvl=null}}
+  if(tvl){try{validateTvlObservation(tvl,row,registry)}catch{tvl=null}}
   if(!tvl){
-   tvl=await tvlCollector({day:row.day,cut,headers:row.headers});validateTvlObservation(tvl,row,registry.version);
+   tvl=await tvlCollector({day:row.day,cut,headers:row.headers});validateTvlObservation(tvl,row,registry);
    await transaction(db,async tx=>{
     await tx.query("SELECT pg_advisory_xact_lock(hashtext('kce-snapshot-publication'))");
     await assertCollectionCoverage(tx,window);

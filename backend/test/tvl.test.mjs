@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { amount, valuePools, valueDeposit, quoteCollateral, valueOrderbooks, aggregateProtocols, loadRegistry, nativeQueries, verifyEscrowPositions, collectTvl } from '../src/tvl.mjs';
+import { amount, valuePools, valueDeposit, quoteCollateral, valueOrderbooks, aggregateProtocols, loadRegistry, nativeQueries, verifyEscrowPositions, collectTvl, activePairs, valueCustody } from '../src/tvl.mjs';
 const token = name => ({ refName: { namespace: name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : null, name: name.split('.').at(-1) } });
 const pool = (account, kda, balance, name = 'test.token', reversed = false) => {
   const native = { token: token('coin'), reserve: kda }, other = { token: token(name), reserve: balance };
@@ -66,15 +66,43 @@ test('Invalid and incomplete UTC dates fail before any source request', async ()
   await assert.rejects(collectTvl({ day: '2026-02-31' }), /Invalid UTC day/);
   await assert.rejects(collectTvl({ day: '2099-01-01' }), /not yet complete/);
 });
-test('Versioned registry identifies explicit sources, boundaries and native queries', async () => {
+test('Versioned registry covers the active protocols, all on chain 2, with one native query', async () => {
   const registry = await loadRegistry();
-  assert.equal(registry.protocols.length, 7);
+  assert.deepEqual(registry.protocols.map(item => item.id), ['mercatus-amm', 'mercatus-staking', 'brodex', 'koberlusw']);
   assert.equal(registry.baselineHeight, 6335858);
-  assert.equal(registry.protocols.find(item => item.id === 'chips-locked').assets.length, 4);
-  assert.ok(registry.protocols.every(item => item.startHeight === registry.baselineHeight && item.endHeight === null));
-  const queries = nativeQueries(registry);
-  assert.deepEqual(Object.keys(queries), ['1', '2', '5']);
-  assert.match(queries['2'], /get-balance "chips-locked-wallet"/);
+  assert.ok(registry.protocols.every(item => item.chain === '2' && item.startHeight === registry.baselineHeight && item.endHeight === null));
+  const queries = nativeQueries(registry, 7300000), ksw = registry.protocols.find(item => item.id === 'koberlusw');
+  assert.deepEqual(Object.keys(queries), ['2']);
   assert.match(queries['2'], /quotePrecisions/);
+  assert.equal(queries['2'].match(/\(try \{"exists": false\}/g).length, ksw.custody.length * ksw.assets.length);
+  assert.ok(ksw.custody.every(item => queries['2'].includes(`.get-balance "${item.account}"`)));
+  for (const removed of ['KDSwap', 'KDLaunch', 'Chips', 'Cabinet']) assert.ok(registry.exclusions.some(item => item.component.includes(removed) && /inactive/.test(item.reason)), removed);
   assert.ok(registry.exclusions.some(item => item.component.includes('LP receipt')));
+});
+test('BroDEX markets are read only from the block that completed their deployment', async () => {
+  const bro = (await loadRegistry()).protocols.find(item => item.id === 'brodex'), names = height => activePairs(bro, height).map(pair => pair.name);
+  assert.deepEqual(names(7081479), ['BRO-KDA-M', 'BRO-zUSD-M', 'BRO-HERON-M']);
+  assert.deepEqual(names(7081480), ['BRO-KDA-M', 'BRO-zUSD-M', 'BRO-HERON-M', 'BRO-kbUSDC-M']);
+  assert.deepEqual(names(7081490), ['BRO-KDA-M', 'BRO-zUSD-M', 'BRO-HERON-M', 'BRO-kbUSDC-M', 'KDA-kbUSDC-M']);
+  assert.ok(bro.pairs.every(pair => bro.verifiedModuleHashes[`${bro.namespace}.bro-dex-core-${pair.name}`]));
+  const before = nativeQueries({ protocols: [bro, (await loadRegistry()).protocols.find(item => item.id === 'koberlusw')] }, 7081479)['2'];
+  assert.equal(before.match(/get-orderbook/g).length, 6);
+  assert.doesNotMatch(before, /kbUSDC/);
+  assert.throws(() => activePairs(bro, undefined), /height is required/);
+});
+test('KoberluSW custody: an absent account holds nothing, balances are valued once, any other read fails', () => {
+  const protocol = { custody: [{ module: 'free.orders', account: 'c:orders' }, { module: 'free.dca', account: 'c:dca' }], assets: ['coin', 'test.usdc'] };
+  const prices = new Map([['coin', { price: 1 }], ['test.usdc', { price: 100 }]]);
+  const rows = [[{ exists: true, balance: { decimal: '32000.0' } }, { exists: false }], [{ exists: true, balance: 0 }, { exists: true, balance: 1.5 }]];
+  const valued = valueCustody(rows, protocol, prices);
+  assert.equal(valued.tvlKda, 32150);
+  assert.deepEqual(valued.positions.map(p => [p.account, p.token, p.exists, p.balance, p.tvlKda]),
+    [['c:orders', 'coin', true, 32000, 32000], ['c:orders', 'test.usdc', false, 0, 0], ['c:dca', 'coin', true, 0, 0], ['c:dca', 'test.usdc', true, 1.5, 150]]);
+  assert.equal(new Set(valued.ownership).size, 4);
+  assert.throws(() => valueCustody(rows.slice(0, 1), protocol, prices), /Incomplete/);
+  assert.throws(() => valueCustody([[rows[0][0]], rows[1]], protocol, prices), /Incomplete/);
+  assert.throws(() => valueCustody([[{ exists: false, balance: 5 }, rows[0][1]], rows[1]], protocol, prices), /Unexpected/);
+  assert.throws(() => valueCustody([[null, rows[0][1]], rows[1]], protocol, prices), /Unexpected/);
+  assert.throws(() => valueCustody([[{ exists: true, balance: -1 }, rows[0][1]], rows[1]], protocol, prices), /Invalid/);
+  assert.throws(() => valueCustody(rows, protocol, new Map([['coin', { price: 1 }]])), /Missing positive native market price for test.usdc/);
 });

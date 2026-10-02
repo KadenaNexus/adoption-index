@@ -28,6 +28,11 @@ try{
  else if(command==='index'){const result=await indexBlocks(db,{throughDay,maxBlocks:numberOption('max-blocks',2000),chunkSize:numberOption('chunk-size',process.env.INDEX_CHUNK_SIZE??200),onProgress:log,signal:stop.signal});await pruneRetention(db,throughDay);log(result)}
  else if(command==='github')log(await collectGithubWithWait(db,{throughDay,waitForQuota:args.includes('--wait'),onProgress:log,signal:stop.signal}));
  else if(command==='compute')log(await computeIndex(db,{throughDay,onProgress:log}));
+ else if(command==='migrate-tvl'){
+  // Switches published history to the current TVL registry (tvl-migration.mjs). Collects every day's TVL again first.
+  const {migrateTvlRegistry}=await import('./tvl-migration.mjs');
+  log(await migrateTvlRegistry(db,{from:option('from'),onProgress:log}));
+ }
  else if(command==='backfill-worker'){
   const deadline=Date.now()+numberOption('max-hours',4)*3600000,maxBlocks=numberOption('max-blocks',6000000),chunk=numberOption('chunk-blocks',20000);
   let indexed=0,failures=0,complete=false;
@@ -149,6 +154,6 @@ try{
   await writeFile(resolve(dir,'day-report.json'),JSON.stringify({day,methodVersion:METHOD_VERSION,calculation,tvl:{registryVersion:registry.version,tvlKda:tvl.tvlKda,tvlUsd:tvl.tvlUsd,kdaUsd:tvl.kdaUsd,protocols},newModules:{fromDay:weekFrom,throughDay:day,counted,modules}},null,2)+'\n');
   await writeFile(resolve(dir,'day-report.md'),md);
   log({day,directory:dir,index:calculation.composite,protocols:protocols.length,newModules:modules.length,counted});
- }else throw new Error('Commands: migrate, worker, index, github, compute, backfill, backfill-worker, daily, scheduler, status, create-key, revoke-key, import-tvl, stage-day, finish-initial-review, verify-sample, report, export');
+ }else throw new Error('Commands: migrate, migrate-tvl, worker, index, github, compute, backfill, backfill-worker, daily, scheduler, status, create-key, revoke-key, import-tvl, stage-day, finish-initial-review, verify-sample, report, export');
 }catch(error){if(error.name!=='AbortError'){log({error:error.name,message:error.message,code:error.code,details:error.details});process.exitCode=1}}
 finally{await db.end()}

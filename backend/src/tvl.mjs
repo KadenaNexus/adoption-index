@@ -5,13 +5,30 @@ export class TvlDataError extends Error { constructor(message) { super(message);
 export const registryPath = new URL('../config/protocol-registry.json', import.meta.url);
 export async function loadRegistry() {
   const registry = JSON.parse(await readFile(registryPath, 'utf8'));
-  const supported = { 'mercatus-amm': '2', 'mercatus-staking': '2', 'kdswap-amm': '1', 'kdlaunch-staking': '1', 'chips-locked': '2', cabinet: '5', brodex: '2' };
+  const supported = { 'mercatus-amm': '2', 'mercatus-staking': '2', brodex: '2', koberlusw: '2' };
   if (registry.network !== 'mainnet01' || registry.baselineHeight !== 6335858 || typeof registry.version !== 'string' ||
       registry.protocols?.length !== Object.keys(supported).length || new Set(registry.protocols.map(protocol => protocol.id)).size !== registry.protocols.length ||
       registry.protocols.some(protocol => supported[protocol.id] !== protocol.chain || protocol.status !== 'included' || protocol.startHeight !== registry.baselineHeight || protocol.endHeight !== null)) {
     throw new TvlDataError('Registry coverage or activation changed; update the native adapter and backfill for this registry version');
   }
+  const find = id => registry.protocols.find(item => item.id === id), bro = find('brodex'), ksw = find('koberlusw');
+  // A BroDEX market is read from the block that completed its deployment, and only with a reviewed core hash.
+  if (!bro.pairs?.length || new Set(bro.pairs.map(pair => pair.name)).size !== bro.pairs.length ||
+      bro.pairs.some(pair => !/^[A-Za-z0-9-]+$/.test(pair.name ?? '') || !pair.base || !pair.quote || pair.base === pair.quote ||
+        !Number.isSafeInteger(pair.startHeight) || pair.startHeight < registry.baselineHeight || !bro.verifiedModuleHashes?.[`${bro.namespace}.bro-dex-core-${pair.name}`])) {
+    throw new TvlDataError('Invalid BroDEX market list');
+  }
+  const accounts = ksw.custody?.map(item => item.account) ?? [];
+  if (!accounts.length || new Set(accounts).size !== accounts.length || accounts.some(account => !/^c:[A-Za-z0-9_-]{43}$/.test(account)) ||
+      !ksw.assets?.length || new Set(ksw.assets).size !== ksw.assets.length || ksw.assets.some(asset => !/^[A-Za-z0-9_.-]+$/.test(asset))) {
+    throw new TvlDataError('Invalid KoberluSW custody list');
+  }
   return registry;
+}
+/** BroDEX markets deployed by the given chain 2 height. */
+export function activePairs(bro, height) {
+  if (!Number.isSafeInteger(height)) throw new TvlDataError('A chain 2 height is required to select BroDEX markets');
+  return bro.pairs.filter(pair => pair.startHeight <= height);
 }
 export function amount(value, label = 'amount') {
   const raw = typeof value === 'object' && value !== null ? value.decimal ?? value.int : value;
@@ -139,36 +156,49 @@ export function verifyEscrowPositions(positions, escrows, namespace) {
     return { ...position, account: row.account, escrowBalance: amount(row.details.balance), escrowGuard: guard };
   });
 }
-export function nativeQueries(registry) {
-  const find = id => registry.protocols.find(item => item.id === id), bro = find('brodex'), chips = find('chips-locked');
-  const books = '[' + bro.pairs.flatMap(pair => ['true', 'false'].map(side => `(${bro.namespace}.bro-dex-view-${pair.name}.get-orderbook ${side} 0 100)`)).join(' ') + ']';
-  const balances = '[' + chips.assets.map(token => `(${token}.get-balance ${JSON.stringify(chips.account)})`).join(' ') + ']';
-  const precisions = '{' + [...new Set(bro.pairs.map(pair => pair.quote))].map(token => `${JSON.stringify(token)}: (${token}.precision)`).join(', ') + '}';
-  const hashes = '{' + bro.pairs.map(pair => {
+/** One chain 2 read per day: every listed component lives on chain 2. */
+export function nativeQueries(registry, height) {
+  const find = id => registry.protocols.find(item => item.id === id), bro = find('brodex'), ksw = find('koberlusw'), pairs = activePairs(bro, height);
+  const books = '[' + pairs.flatMap(pair => ['true', 'false'].map(side => `(${bro.namespace}.bro-dex-view-${pair.name}.get-orderbook ${side} 0 100)`)).join(' ') + ']';
+  const precisions = '{' + [...new Set(pairs.map(pair => pair.quote))].map(token => `${JSON.stringify(token)}: (${token}.precision)`).join(', ') + '}';
+  const hashes = '{' + pairs.map(pair => {
     const module = `${bro.namespace}.bro-dex-core-${pair.name}`;
     return `${JSON.stringify(module)}: (at "hash" (describe-module ${JSON.stringify(module)}))`;
   }).join(', ') + '}';
+  // A custody account not yet created in an asset's ledger is the one read that may come back empty.
+  const custody = '[' + ksw.custody.map(item => '[' + ksw.assets.map(asset =>
+    `(try {"exists": false} {"exists": true, "balance": (${asset}.get-balance ${JSON.stringify(item.account)})})`).join(' ') + ']').join(' ') + ']';
   return {
-    '1': '{"pools": (select kdlaunch.kdswap-exchange.pairs (constantly true)), "staking": (kdlaunch.staking.get-staking-stats)}',
-    '2': `{"pools": (select kaddex.exchange.pairs (constantly true)), "staking": (kaddex.staking.get-pool-state), "chipsBalances": ${balances}, "books": ${books}, "quotePrecisions": ${precisions}, "broModuleHashes": ${hashes}}`,
-    '5': `(coin.get-balance ${JSON.stringify(find('cabinet').account)})`,
+    '2': `{"pools": (select kaddex.exchange.pairs (constantly true)), "staking": (kaddex.staking.get-pool-state), "books": ${books}, "quotePrecisions": ${precisions}, "broModuleHashes": ${hashes}, "custody": ${custody}}`,
   };
 }
-export function valueNativeState(state, registry, books) {
-  const chain1 = valuePools(state['1'].pools, '1'), chain2 = valuePools(state['2'].pools, '2');
-  const find = id => registry.protocols.find(item => item.id === id), chips = find('chips-locked'), bro = find('brodex');
-  if (!Array.isArray(state['2'].chipsBalances) || state['2'].chipsBalances.length !== chips.assets.length) throw new TvlDataError('Incomplete Chips balance coverage');
-  const chipPositions = chips.assets.map((token, i) => ({ token, balance: amount(state['2'].chipsBalances[i]), tvlKda: valueDeposit(state['2'].chipsBalances[i], token, chain2.prices) }));
+/** KoberluSW: each listed asset held by each custody account. An absent account holds nothing; every other read must be a balance. */
+export function valueCustody(rows, protocol, prices) {
+  if (!Array.isArray(rows) || rows.length !== protocol.custody.length || rows.some(row => !Array.isArray(row) || row.length !== protocol.assets.length)) {
+    throw new TvlDataError('Incomplete KoberluSW custody coverage');
+  }
+  const positions = [];
+  let tvlKda = 0;
+  protocol.custody.forEach((item, i) => protocol.assets.forEach((token, j) => {
+    const read = rows[i][j];
+    if (read?.exists === false && Object.keys(read).length === 1) return void positions.push({ module: item.module, account: item.account, token, exists: false, balance: 0, tvlKda: 0 });
+    if (read?.exists !== true) throw new TvlDataError('Unexpected KoberluSW custody read');
+    const balance = amount(read.balance, `${token} custody balance`), value = valueDeposit(read.balance, token, prices);
+    positions.push({ module: item.module, account: item.account, token, exists: true, balance, tvlKda: value });
+    tvlKda += value;
+  }));
+  return { tvlKda, positions, ownership: positions.map(position => `2:${position.account}:${position.token}`) };
+}
+export function valueNativeState(state, registry, books, height) {
+  const chain2 = valuePools(state['2'].pools, '2');
+  const find = id => registry.protocols.find(item => item.id === id), bro = find('brodex');
   const precisions = Object.fromEntries(Object.entries(state['2'].quotePrecisions).map(([token, value]) => [token, amount(value, 'precision')]));
-  const orders = valueOrderbooks(books, bro.pairs, chain2.prices, precisions);
+  const orders = valueOrderbooks(books, activePairs(bro, height), chain2.prices, precisions);
   const protocols = [
     { id: 'mercatus-amm', chain: '2', tvlKda: chain2.tvlKda, ownership: chain2.ownership, positions: chain2.positions },
-    { id: 'kdswap-amm', chain: '1', tvlKda: chain1.tvlKda, ownership: chain1.ownership, positions: chain1.positions },
     { id: 'mercatus-staking', chain: '2', tvlKda: valueDeposit(state['2'].staking['staked-kdx'], 'kaddex.kdx', chain2.prices), ownership: ['2:kaddex.staking:staked-kdx'], balance: amount(state['2'].staking['staked-kdx']) },
-    { id: 'kdlaunch-staking', chain: '1', tvlKda: valueDeposit(state['1'].staking.totalStaked, 'kdlaunch.token', chain1.prices), ownership: ['1:kdlaunch.staking:totalStaked'], balance: amount(state['1'].staking.totalStaked) },
-    { id: 'chips-locked', chain: '2', tvlKda: chipPositions.reduce((total, item) => total + item.tvlKda, 0), ownership: chips.assets.map(token => `2:${chips.account}:${token}`), positions: chipPositions },
-    { id: 'cabinet', chain: '5', tvlKda: amount(state['5']), ownership: [`5:${find('cabinet').account}:coin`] },
     { id: 'brodex', chain: '2', ...orders, ownership: orders.positions.map(order => `2:${bro.namespace}:order:${order.pair}:${order.id}`) },
+    { id: 'koberlusw', chain: '2', ...valueCustody(state['2'].custody, find('koberlusw'), chain2.prices) },
   ];
   return { tvlKda: aggregateProtocols(protocols), protocols };
 }
@@ -185,8 +215,10 @@ async function marketPrice(day) {
 export async function collectTvl({ day, cut, headers }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(Date.parse(day)) || new Date(day).toISOString().slice(0, 10) !== day) throw new TvlDataError('Invalid UTC day');
   if (Date.parse(day + 'T00:00:00Z') + 86400000 > Date.now()) throw new TvlDataError('UTC day is not yet complete');
-  const registry = await loadRegistry(), queries = nativeQueries(registry), endHeaders = Array.isArray(headers) ? Object.fromEntries(headers.map(header => [String(header.chainId), header])) : headers;
-  const evidence = { reads: [], registry, price: null }, state = {};
+  const registry = await loadRegistry(), endHeaders = Array.isArray(headers) ? Object.fromEntries(headers.map(header => [String(header.chainId), header])) : headers;
+  const height = endHeaders?.['2']?.height;
+  if (!Number.isSafeInteger(height)) throw new TvlDataError('Missing post-fork canonical end header for chain 2');
+  const queries = nativeQueries(registry, height), evidence = { reads: [], registry, price: null }, state = {};
   async function read(chain, code) {
     const target = endHeaders?.[chain];
     if (!target || !Number.isSafeInteger(target.height) || !target.hash || target.height < registry.baselineHeight) throw new TvlDataError(`Missing post-fork canonical end header for chain ${chain}`);
@@ -201,13 +233,14 @@ export async function collectTvl({ day, cut, headers }) {
     return result.data ?? result.result?.data;
   }
   for (const chain of Object.keys(queries)) state[chain] = await read(chain, queries[chain]);
-  const bro = registry.protocols.find(item => item.id === 'brodex'), books = [];
-  for (const [module, hash] of Object.entries(bro.verifiedModuleHashes)) {
-    if (state['2'].broModuleHashes?.[module] !== hash) throw new TvlDataError(`BroDEX source changed; registry review required for ${module}`);
+  const bro = registry.protocols.find(item => item.id === 'brodex'), pairs = activePairs(bro, height), books = [];
+  for (const pair of pairs) {
+    const module = `${bro.namespace}.bro-dex-core-${pair.name}`;
+    if (state['2'].broModuleHashes?.[module] !== bro.verifiedModuleHashes[module]) throw new TvlDataError(`BroDEX source changed; registry review required for ${module}`);
   }
-  if (!Array.isArray(state['2'].books) || state['2'].books.length !== bro.pairs.length * 2) throw new TvlDataError('Missing orderbook result');
+  if (!Array.isArray(state['2'].books) || state['2'].books.length !== pairs.length * 2) throw new TvlDataError('Missing orderbook result');
   for (let i = 0; i < state['2'].books.length; i++) {
-    const pair = bro.pairs[Math.floor(i / 2)], side = i % 2 === 0 ? 'ask' : 'bid';
+    const pair = pairs[Math.floor(i / 2)], side = i % 2 === 0 ? 'ask' : 'bid';
     let page = state['2'].books[i], orders = [...page], pages = 1;
     while (page.length === 100) {
       if (pages++ >= 1000) throw new TvlDataError('Orderbook pagination safety limit reached');
@@ -219,7 +252,7 @@ export async function collectTvl({ day, cut, headers }) {
     }
     books.push({ pair: pair.name, side, orders });
   }
-  const valuation = valueNativeState(state, registry, books);
+  const valuation = valueNativeState(state, registry, books, height);
   const orderProtocol = valuation.protocols.find(protocol => protocol.id === 'brodex'), rows = new Map();
   for (const book of books) for (const order of book.orders) rows.set(`${book.pair}:${order.id?.int ?? order.id}`, order);
   const escrow = [];

@@ -53,9 +53,9 @@ export default async function Methodology() {
         <ReportLink indicator="contracts"/>
       </div>
       <div><h3><span>03</span> Total value locked <b>20%</b></h3>
-        <p>Balances read directly from historical Pact state for a versioned registry covering Mercatus, KDSwap, KDLaunch staking, Chips, Cabinet and BroDEX. Pool assets, staked principal and funded order escrow are valued in KDA. Receipt tokens are not counted again.</p>
+        <p>Balances read directly from historical Pact state for a versioned registry of the active protocols: Mercatus, BroDEX and KoberluSW. Pool assets, staked principal, funded order escrow and unspent DCA deposits are valued in KDA. Receipt tokens are not counted again.</p>
         <p>The index uses the seven-day mean in KDA. The USD display uses Mercatus’s KDA/USDT price, treating USDT as one USD; this is an approximation and does not affect the index.</p>
-        <p className="caveat">The registry defines coverage. Pool-implied prices, particularly for illiquid tokens, are valuations rather than guaranteed sale proceeds. DefiLlama is a cross-check only.</p>
+        <p className="caveat">The registry defines coverage. KDSwap, KDLaunch, Chips and Kadena Cabinet are left out as inactive, across the whole history. Pool-implied prices, particularly for illiquid tokens, are valuations rather than guaranteed sale proceeds. DefiLlama is a cross-check only.</p>
         <ReportLink indicator="tvl"/>
       </div>
       <div><h3><span>04</span> Network hashrate <b>15%</b></h3>

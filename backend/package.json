@@ -10,6 +10,7 @@
     "start": "node --env-file-if-exists=.env src/server.mjs",
     "migrate": "node --env-file-if-exists=.env src/migrate.mjs",
     "migrate-method": "node --env-file-if-exists=.env src/migrate.mjs --method",
+    "migrate-tvl": "node --env-file-if-exists=.env src/cli.mjs migrate-tvl",
     "backfill": "node --env-file-if-exists=.env src/cli.mjs backfill",
     "daily": "node --env-file-if-exists=.env src/cli.mjs daily",
     "test": "node --test --test-concurrency=4 test/*.test.mjs",

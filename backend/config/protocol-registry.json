@@ -1,9 +1,9 @@
 {
-  "version": "2026-09-26.1",
+  "version": "2026-10-03.1",
   "network": "mainnet01",
   "baselineHeight": 6335858,
-  "scope": "TVL in the explicitly listed Pact protocol components, valued from native state. This registry defines index coverage; it is not a claim to enumerate every application on the network.",
-  "snapshot": "Canonical final block before the end of each UTC day on each component's chain. The fork date is a partial observation starting at block 6335858.",
+  "scope": "TVL in the explicitly listed Pact protocol components that are still active, valued from native state. This registry defines index coverage; it is not a claim to enumerate every application on the network.",
+  "snapshot": "Canonical final block before the end of each UTC day on chain 2, where every listed component lives. The fork date is a partial observation starting at block 6335858.",
   "valuation": "Native coin reserves plus non-native reserves valued at the same pool's KDA reserve ratio; standalone deposits valued against the largest native KDA pool on the same chain. No LP receipt token or staking of LP receipts is counted separately. All prices are spot pool-implied valuations, including illiquid assets, not independently realizable sale proceeds.",
   "usdPrice": {
     "source": "https://dexapi.kadena.fun/candles?currency=USDT&asset=KDA",
@@ -40,67 +40,6 @@
       "source": "https://github.com/Mercatus-Kadena/dex_api"
     },
     {
-      "id": "kdswap-amm",
-      "name": "KDSwap liquidity pools",
-      "chain": "1",
-      "status": "included",
-      "startHeight": 6335858,
-      "endHeight": null,
-      "module": "kdlaunch.kdswap-exchange",
-      "read": "(select kdlaunch.kdswap-exchange.pairs (constantly true))",
-      "ownership": "Each pool account's two reserves; LP receipts and fee accounts excluded",
-      "valuation": "Two sides of each native KDA pair at that pool's reserve ratio",
-      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/kdswap/index.js"
-    },
-    {
-      "id": "kdlaunch-staking",
-      "name": "KDLaunch KDL staking",
-      "chain": "1",
-      "status": "included",
-      "startHeight": 6335858,
-      "endHeight": null,
-      "module": "kdlaunch.staking",
-      "read": "(kdlaunch.staking.get-staking-stats)",
-      "ownership": "totalStaked field only; cumulative rewarded tokens excluded",
-      "asset": "kdlaunch.token",
-      "valuation": "Staked KDL times the native chain-1 KDSwap KDL/KDA reserve ratio",
-      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/kdlaunch/index.js"
-    },
-    {
-      "id": "chips-locked",
-      "name": "Chips locked tokens",
-      "chain": "2",
-      "status": "included",
-      "startHeight": 6335858,
-      "endHeight": null,
-      "module": "n_e98a056e3e14203e6ec18fada427334b21b667d8.chips",
-      "account": "chips-locked-wallet",
-      "assets": [
-        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cKDA",
-        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cBTC",
-        "n_e98a056e3e14203e6ec18fada427334b21b667d8.cLTC",
-        "n_e98a056e3e14203e6ec18fada427334b21b667d8.kWATT"
-      ],
-      "read": "Each asset's get-balance for chips-locked-wallet",
-      "ownership": "Four separate locked token balances; no mining hardware appraisal or reward claims added",
-      "valuation": "Each locked token at its native Mercatus KDA pool reserve ratio, including kWATT. Avoids the protocol's stale USD oracle",
-      "source": "https://www.chips.finance/"
-    },
-    {
-      "id": "cabinet",
-      "name": "Kadena Cabinet treasury lock",
-      "chain": "5",
-      "status": "included",
-      "startHeight": 6335858,
-      "endHeight": null,
-      "module": "coin",
-      "account": "c:86aaCQXT8uRkyXGXu9k-eNn1kXqV_nNmjTYErKpZ6vE",
-      "read": "(coin.get-balance \"c:86aaCQXT8uRkyXGXu9k-eNn1kXqV_nNmjTYErKpZ6vE\")",
-      "ownership": "KDA held by the identified Cabinet contract account only",
-      "valuation": "Native KDA balance, once",
-      "source": "https://github.com/DefiLlama/DefiLlama-Adapters/blob/88066be30ec2d82a1fc86ceec8622843c0379cf5/projects/cabinet/index.js"
-    },
-    {
       "id": "brodex",
       "name": "BroDEX open order collateral",
       "chain": "2",
@@ -112,44 +51,138 @@
         {
           "name": "BRO-KDA-M",
           "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
-          "quote": "coin"
+          "quote": "coin",
+          "startHeight": 6335858
         },
         {
           "name": "BRO-zUSD-M",
           "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
-          "quote": "n_b742b4e9c600892af545afb408326e82a6c0c6ed.zUSD"
+          "quote": "n_b742b4e9c600892af545afb408326e82a6c0c6ed.zUSD",
+          "startHeight": 6335858
         },
         {
           "name": "BRO-HERON-M",
           "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
-          "quote": "n_e309f0fa7cf3a13f93a8da5325cdad32790d2070.heron"
+          "quote": "n_e309f0fa7cf3a13f93a8da5325cdad32790d2070.heron",
+          "startHeight": 6335858
+        },
+        {
+          "name": "BRO-kbUSDC-M",
+          "base": "n_582fed11af00dc626812cd7890bb88e72067f28c.bro",
+          "quote": "n_e595727b657fbbb3b8e362a05a7bb8d12865c1ff.kb-USDC",
+          "startHeight": 7081480
+        },
+        {
+          "name": "KDA-kbUSDC-M",
+          "base": "coin",
+          "quote": "n_e595727b657fbbb3b8e362a05a7bb8d12865c1ff.kb-USDC",
+          "startHeight": 7081490
         }
       ],
-      "read": "Each bro-dex-view-PAIR.get-orderbook, both sides, fully paginated; quote precision read from the quote module",
+      "read": "Each bro-dex-view-PAIR.get-orderbook, both sides, fully paginated; quote precision read from the quote module. A market is read from its startHeight, the block that completed its core, view and wrapper deployment",
       "ownership": "Only remaining open-order collateral: asks deposit base amount; bids deposit floor(amount*limitPrice, quotePrecision). Do not also count balances backing wrappers or counterparties' requested assets",
       "valuation": "Deposited side only, priced using contemporaneous native Mercatus pool ratios; bid limit price determines deposited quote amount but does not price the base asset",
       "source": "https://github.com/brothers-DAO/bro-dex/blob/main/pact/bro-dex-core.pact",
       "verifiedModuleHashes": {
         "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-KDA-M": "FLUb_895yIUDwt6pP_OCm3YTx3avLAH58YxtqFY7XuM",
         "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-zUSD-M": "0nD0itg4sVT-sTaZawlyh44JSin9kGYqUcU63MNrr0s",
-        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "AoqsO-OtT1Ti9bi8Df2_od66YWAvh3greIIGlz1QDPo"
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "AoqsO-OtT1Ti9bi8Df2_od66YWAvh3greIIGlz1QDPo",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-kbUSDC-M": "NqJDFYM4joVQhFKrB2PevDRhhKGrHRperf8HsxOZCOQ",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-KDA-kbUSDC-M": "95eKHyN6ljZte03FMM8UnXky96S6SHjxFvts0CCf1c8"
       },
       "sourceCodeSha256": {
         "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-KDA-M": "f869e7bd542811aa15d332ae5c8963059f3109d587c1c8054d522542f99b044e",
         "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-zUSD-M": "38cadc8278e846b0825268fbdf2f7ff287fae310f106fc04381eb0330a77e6d4",
-        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "d3c58978bf384b2de56e6c72d41c10313662a4c3c3102aaad3aed00326d4d3d4"
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-HERON-M": "d3c58978bf384b2de56e6c72d41c10313662a4c3c3102aaad3aed00326d4d3d4",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-BRO-kbUSDC-M": "119aa148e13866286f0482c4859030f91dc98f5f1604bf40d17f4ebc91965e95",
+        "n_f6aa9328b19b8bf7e788603bd669dcf549e07575.bro-dex-core-KDA-kbUSDC-M": "5c9481191e82fe37330c25f3c1e897fa7fe1cb6073058c96b36f845a8f1f1ada"
       },
-      "escrowEvidence": "Every collected order is additionally checked against its actual token balance at the core-generated order-account, guarded by the matching ORDER-ACCOUNT capability. The deployed core create-order checks funding; cancel/take transfer from that account. Any underfunding, unexpected guard or reviewed module-hash change fails the observation."
+      "escrowEvidence": "Every collected order is additionally checked against its actual token balance at the core-generated order-account, guarded by the matching ORDER-ACCOUNT capability. The deployed core create-order checks funding; cancel/take transfer from that account. Any underfunding, unexpected guard or reviewed module-hash change fails the observation.",
+      "templateReview": "The kbUSDC markets (deployed 25 Jul 2026) use the reviewed BRO-KDA-M core source; they differ only in market name, price and amount limits, display decimals and the base/quote tokens"
+    },
+    {
+      "id": "koberlusw",
+      "name": "KoberluSW limit-order and DCA deposits",
+      "chain": "2",
+      "status": "included",
+      "startHeight": 6335858,
+      "endHeight": null,
+      "site": "https://koberlusw.dnns.es",
+      "custody": [
+        {
+          "module": "free.ksw",
+          "role": "Limit orders, first version",
+          "account": "c:PMGhYTCEB8hnNUPWoJ8HghJPqUy04S2hWF_hJQ7AMQQ",
+          "firstDeployedHeight": 7001382
+        },
+        {
+          "module": "free.ksw2",
+          "role": "Limit orders",
+          "account": "c:aTPrDBF5HQWwLBXmMwNc3JF83cA5cBywkYbQdac5XaY",
+          "firstDeployedHeight": 7162848
+        },
+        {
+          "module": "n_42c30b9819ca31d86d198eca5df2057293b5f6f5.ksw-dca",
+          "role": "DCA plans, first version",
+          "account": "c:2VrpcQXLqwaYT7BWF225c48a_-TGShGw8OPksdU1pBo",
+          "firstDeployedHeight": 7022373
+        },
+        {
+          "module": "free.ksw-dca2",
+          "role": "DCA plans",
+          "account": "c:QiDAEP0E7hUoDWWxntmLK5LKvAeJm1SHJMAWcBmOZM8",
+          "firstDeployedHeight": 7162849
+        },
+        {
+          "module": "free.ksw-dca3",
+          "role": "DCA plans, KDA against kb-USDC, kb-ETH, FLUX or BRO",
+          "account": "c:egWEeU7rKLxU57GgY8Y1ZBWv0_GFQww0DOj9CBlYgr8",
+          "firstDeployedHeight": 7260725
+        }
+      ],
+      "assets": [
+        "coin",
+        "n_e595727b657fbbb3b8e362a05a7bb8d12865c1ff.kb-USDC",
+        "n_e595727b657fbbb3b8e362a05a7bb8d12865c1ff.kb-ETH",
+        "runonflux.flux",
+        "n_582fed11af00dc626812cd7890bb88e72067f28c.bro"
+      ],
+      "read": "Each asset's get-balance for each contract's custody account. An account not yet created in an asset's ledger holds nothing and is recorded as absent; any other failed read fails the observation",
+      "ownership": "Deposits held for open limit orders and unspent DCA balances only. Swaps execute in Mercatus pools, which are counted there; service fees leave custody when they are charged",
+      "valuation": "KDA once; other assets at the native Mercatus pool reserve ratio",
+      "accountEvidence": "Each account equals the module's (custody-account), a capability-guard principal, checked at chain 2 height 7281060. Literal accounts are read so that a contract upgrade cannot stop the observation",
+      "note": "Beta per the site: mainnet trading is limited to whitelisted wallets and the order and DCA contracts are unaudited",
+      "source": "https://koberlusw.dnns.es"
     }
   ],
   "exclusions": [
+    {
+      "component": "KDSwap liquidity pools (kdlaunch.kdswap-exchange, chain 1)",
+      "reason": "Removed in registry 2026-10-03.1 as inactive: kdswap.exchange shows a hosting placeholder, and only occasional direct contract trades remain; its largest pool (BRO/KDA) was withdrawn on 26 Sep 2026. Removed from the whole history"
+    },
+    {
+      "component": "KDLaunch KDL staking (kdlaunch.staking, chain 1)",
+      "reason": "Removed in registry 2026-10-03.1 as inactive: kdlaunch.com no longer resolves and total staked KDL has not changed since collection began on 29 Jun 2026. Removed from the whole history"
+    },
+    {
+      "component": "Chips locked tokens (chips-locked-wallet, chain 2)",
+      "reason": "Removed in registry 2026-10-03.1 as inactive: chips.finance shows a 'Coming Soon' placeholder and the locked balances have not changed since 29 Jun 2026. Removed from the whole history"
+    },
+    {
+      "component": "Kadena Cabinet treasury lock (chain 5)",
+      "reason": "Removed in registry 2026-10-03.1 as inactive: Cabinet was run by Kadena LLC, which has shut down, and the locked KDA has not changed since 29 Jun 2026. Removed from the whole history"
+    },
+    {
+      "component": "DNNS grid bot (free.dnns-grid, chain 2)",
+      "reason": "Same developer as KoberluSW, but not offered on koberlusw.dnns.es and limited to licensed wallets; first deployed after 27 Sep 2026. Not reviewed for this version"
+    },
     {
       "component": "LP receipt tokens and LP staking",
       "reason": "Underlying pool reserves are already counted; counting receipts again would duplicate TVL"
     },
     {
       "component": "BroDEX KDA-zUSD-M",
-      "reason": "Published mainnet configuration marks this market as coming; three named deployed markets are included"
+      "reason": "Published mainnet configuration marks this market as coming and it is not deployed; the five deployed markets are included"
     },
     {
       "component": "BroDEX unused wrapper deposits and fee accounts",
