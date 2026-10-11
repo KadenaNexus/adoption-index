@@ -1,0 +1,29 @@
+# https://adoption.kadena.ws/: every push is tested and built; main is deployed only if all pass (see KadenaNexus/homepage docs/DEPLOY-STANDARD.md)
+name: deploy
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            site/package-lock.json
+            backend/package-lock.json
+      - name: Backend tests
+        working-directory: backend
+        run: npm ci && npm test
+      - name: Site tests and build
+        working-directory: site
+        run: npm ci && npm test && npm run build
+  deploy:
+    needs: test
+    uses: KadenaNexus/homepage/.github/workflows/deploy-app.yml@main
+    with:
+      url: https://adoption.kadena.ws/
+    secrets: inherit
