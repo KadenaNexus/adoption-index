@@ -29,7 +29,12 @@ main[tabindex]:focus, main[tabindex]:focus-visible, h2[tabindex="-1"]:focus-visi
 /* Layout */
 .page { max-width: 908px; margin: 0 auto; padding: 0 24px 24px; }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0 23px; border-bottom: 1px solid var(--line); }
-.brand { font-size: 18px; font-weight: 700; line-height: 1; color: var(--ink); }
+.brand { font-size: 18px; font-weight: 700; line-height: 1; color: var(--ink); display: flex; align-items: center; gap: 10px; text-decoration: none; white-space: nowrap; }
+.brand img { width: 32px; height: auto; flex: none; }
+.brand-wrap { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.nx-part { font-size: 13.5px; color: var(--muted); text-decoration: none; padding-left: 16px; border-left: 1px solid var(--line); white-space: nowrap; }
+.nx-part:hover { color: var(--ink); }
+@media (max-width: 700px) { .nx-part { display: none; } }
 .signin-button { display: inline-block; padding: 8px 15px; border: 1.5px solid var(--crimson); border-radius: 6px; color: var(--crimson); font-size: 13px; font-weight: 700; line-height: 15px; letter-spacing: .06em; text-transform: uppercase; transition: background 150ms ease, color 150ms ease; }
 .signin-button:hover { background: var(--crimson); color: #fff; }
 .site-notice { margin: 16px 0 0; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-2); font-size: 13px; text-align: center; }
