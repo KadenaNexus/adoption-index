@@ -27,7 +27,7 @@ main[tabindex]:focus, main[tabindex]:focus-visible, h2[tabindex="-1"]:focus-visi
 .nowrap { white-space: nowrap; }
 
 /* Layout */
-.page { max-width: 908px; margin: 0 auto; padding: 0 24px 24px; }
+.page { max-width: 1220px; margin: 0 auto; padding: 0 20px 24px; }
 .site-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 24px 0 23px; border-bottom: 1px solid var(--line); }
 .brand { font-size: 18px; font-weight: 700; line-height: 1; color: var(--ink); display: flex; align-items: center; gap: 10px; text-decoration: none; white-space: nowrap; }
 .brand img { width: 32px; height: auto; flex: none; }
