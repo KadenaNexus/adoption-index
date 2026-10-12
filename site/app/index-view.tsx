@@ -17,7 +17,10 @@ import ReportLink from './report-link';
 export async function SiteHeader() {
   const signedIn = !!await getSessionToken();
   return <header className="site-header">
-    <Link className="brand" href="/">kadena.ws</Link>
+    <div className="brand-wrap">
+      <Link className="brand" href="/"><img src="/nexus-mark.png" width={32} alt=""/>Kadena Adoption Index</Link>
+      <a className="nx-part" href="https://kadena.ws/">Part of Kadena Nexus</a>
+    </div>
     {signedIn ? <Link className="signin-button" href="/account">Account</Link> : <Link className="signin-button" href="/signin">Sign in</Link>}
   </header>;
 }
@@ -26,6 +29,7 @@ export function Footer({ day = null }: { day?: string | null }) {
   return <footer className="site-footer">
     <Link href="/methodology">How is the index calculated?</Link>
     <p>Updated daily at 00:00 UTC · Not financial advice</p>
+    <p className="footnote"><a href="https://kadena.ws/">Part of Kadena Nexus</a> · <a href="https://github.com/KadenaNexus/adoption-index">GitHub</a></p>
     <p className="footnote">{day ? `Latest reading: ${formatDay(day)} (UTC) · ` : ''}Collection began 29 June 2026; earlier history not yet included.</p>
   </footer>;
 }
