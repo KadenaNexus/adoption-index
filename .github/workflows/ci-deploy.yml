@@ -1,0 +1,122 @@
+name: Adoption Index CI and deployment
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kce_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d kce_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/kce_test
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.23.0
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            site/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Run backend tests against disposable PostgreSQL
+        run: npm test --prefix backend
+      - name: Install site dependencies
+        run: npm ci --prefix site
+      - name: Run site tests
+        run: npm test --prefix site
+      - name: Build site
+        run: npm run build --prefix site
+
+  deploy:
+    name: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-adoption-index
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      DEPLOY_SCRIPT: ${{ secrets.DEPLOY_SCRIPT }}
+    steps:
+      - name: Validate deployment settings
+        run: |
+          set -euo pipefail
+          test "$DEPLOY_HOST" = "89.167.14.58"
+          test "$DEPLOY_USER" = "deployer"
+          test -n "$DEPLOY_KEY"
+          test "$DEPLOY_SCRIPT" = "deploy-adoption" || test "$DEPLOY_SCRIPT" = "/usr/local/bin/deploy-adoption"
+
+      - name: Check out source for deployment tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Prepare restricted SSH connection
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          cat > "$HOME/.ssh/known_hosts" <<'EOF'
+          89.167.14.58 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEmNdcA2rlIHynqX/PNVjT+fDPFVwmhc1WDE6QN0kLel
+          EOF
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy Adoption Index
+        id: remote_deploy
+        run: |
+          set -euo pipefail
+          if ! output=$(ssh -i "$HOME/.ssh/id_ed25519" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o ConnectTimeout=15 \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'sudo -n /usr/local/bin/deploy-adoption' 2>&1); then
+            printf '%s\n' "$output"
+            exit 1
+          fi
+          printf '%s\n' "$output"
+          deployed_short_sha=$(printf '%s\n' "$output" | sed -nE \
+            's/.*(succeeded at |already at origin\/main \()([0-9a-f]{7,40}).*/\2/p' | tail -n 1)
+          [[ "$deployed_short_sha" =~ ^[0-9a-f]{7,40}$ ]] || { echo "Could not identify deployed commit." >&2; exit 1; }
+          echo "deployed_short_sha=$deployed_short_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Tag deployed commit
+        env:
+          DEPLOYED_SHORT_SHA: ${{ steps.remote_deploy.outputs.deployed_short_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          deployed_sha=$(git rev-parse --verify "${DEPLOYED_SHORT_SHA}^{commit}")
+          tag="deploy-adoption-$(date -u +%F-%H%M)-${DEPLOYED_SHORT_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$tag" "$deployed_sha"
+          git push origin "refs/tags/$tag"
