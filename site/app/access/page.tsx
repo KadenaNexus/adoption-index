@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { PageShell } from '../index-view';
 import { billingTerms, plans } from '../../lib/billing-terms';
-export const metadata: Metadata = { title: 'Pro plans | Kadena Community Edition Adoption Index' };
+export const metadata: Metadata = { title: 'Pro plans | Kadena Community Edition Adoption Index', alternates: { canonical: '/access' } };
 const included = [
   'Historical charts: 30D, 90D and All; 1Y unlocks once a full year of verified history exists',
   'The index breakdown: all five inputs against their fixed baselines, every day',
