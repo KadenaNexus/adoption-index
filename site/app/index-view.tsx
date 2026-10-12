@@ -30,6 +30,7 @@ export function Footer({ day = null }: { day?: string | null }) {
     <Link href="/methodology">How is the index calculated?</Link>
     <p>Updated daily at 00:00 UTC · Not financial advice</p>
     <p className="footnote"><a href="https://kadena.ws/">Part of Kadena Nexus</a> · <a href="https://github.com/KadenaNexus/adoption-index">GitHub</a></p>
+    <p className="footnote"><a href="https://nodes.kadena.ws/">Network Monitor</a> · <a href="https://marketplace.kadena.ws/">P2P Marketplace</a> · <a href="https://earn.kadena.ws/">Kadena Earn</a> · <a href="https://quantum.kadena.ws/">Quantum-Safe Kadena</a> · <a href="https://kadenadevs.kadena.ws/">Kadena Devs</a> · <a href="https://kadena.ws/community-edition/">Kadena Community Edition</a></p>
     <p className="footnote">{day ? `Latest reading: ${formatDay(day)} (UTC) · ` : ''}Collection began 29 June 2026; earlier history not yet included.</p>
   </footer>;
 }
