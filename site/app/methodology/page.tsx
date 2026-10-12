@@ -5,7 +5,7 @@ import { PageShell } from '../index-view';
 import ReportLink from '../report-link';
 import { getPublicIndex } from '../../lib/public-index';
 import { formatAmount } from '../../lib/metrics';
-export const metadata: Metadata = { title: 'Methodology | Kadena Community Edition Adoption Index' };
+export const metadata: Metadata = { title: 'Methodology | Kadena Community Edition Adoption Index', alternates: { canonical: '/methodology' } };
 export const dynamic = 'force-dynamic';
 
 const BASELINE_ROWS = [

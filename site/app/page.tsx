@@ -1,9 +1,11 @@
+import type { Metadata } from 'next';
 import IndexView from './index-view';
 import { isSubscriber } from '../lib/account-view';
 import { getProData, rangeFrom } from '../lib/pro-data';
 import { getPublicIndex } from '../lib/public-index';
 import { getAccountState, getSessionToken, requestClientIp } from '../lib/session';
 export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { alternates: { canonical: '/' } };
 
 // View B for active subscribers only. Everyone else gets view A: no Pro request is made and no Pro data is rendered.
 export default async function Home({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
