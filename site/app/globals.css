@@ -410,3 +410,11 @@ textarea.field { min-height: 148px; resize: vertical; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
 @media (forced-colors: active) { .locked-content { opacity: .2; } .meter i { background: CanvasText; } }
+
+/* About the index: plain-language explanation under the cards */
+.about-index { max-width: 760px; }
+.about-index p, .about-index ul { margin: 0 0 12px; color: var(--ink-2); line-height: 1.65; }
+.about-index ul { padding-left: 20px; list-style: disc; }
+.about-index li { margin-bottom: 4px; }
+.about-index strong { color: var(--ink); }
+.about-index a { color: var(--crimson-ink); text-decoration: underline; text-underline-offset: 2px; }

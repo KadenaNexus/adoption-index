@@ -168,6 +168,25 @@ function AccessPanel() {
   </section>;
 }
 
+// Plain-language explanation for every visitor (and search engines). Figures here are fixed facts, not live data.
+function AboutIndex() {
+  return <section className="section about-index" aria-labelledby="about-title">
+    <h2 id="about-title">About the Adoption Index</h2>
+    <p>Kadena Community Edition is the Kadena blockchain as the community has run it since Kadena LLC wound down in late 2025: the same chain, the same KDA and the same Pact contracts. The Adoption Index answers one question about it every day: is the network being used more or less than it was in its first verified month?</p>
+    <p>The index combines five public signals, each taken straight from the chain or from GitHub:</p>
+    <ul>
+      <li><strong>Active addresses</strong> (30%): distinct senders and receivers on each of the 20 chains, as a 7-day average.</li>
+      <li><strong>New contracts deployed</strong> (25%): Pact modules deployed in the last 7 days.</li>
+      <li><strong>TVL</strong> (20%): value held in Kadena protocols such as Mercatus, measured in KDA so the KDA price does not move the index.</li>
+      <li><strong>Network hashrate</strong> (15%): the proof-of-work security behind all 20 chains.</li>
+      <li><strong>GitHub commits</strong> (10%): development activity in the kda-community organization.</li>
+    </ul>
+    <p>Each signal is divided by its own fixed baseline from 29 June to 28 July 2026, weighted and added up. Activity equal to that baseline scores 50, double scores 100, and there is no upper limit. Baselines never move, so a reading of 60 always means about 20% more activity than the baseline month.</p>
+    <p>A new reading is published every day after 00:00 UTC, once all five inputs pass coverage checks. Past days are never recalculated. <Link href="/methodology">Read the full methodology</Link> for the formulas, the baseline values and how missing data is handled.</p>
+    <p>The index is built by <a href="https://kadena.ws/">Kadena Nexus</a>, an independent community project. To watch the network itself, open the <a href="https://nodes.kadena.ws/">Kadena Network Monitor</a>; for background, see <a href="https://kadena.ws/community-edition/">What is Kadena Community Edition?</a></p>
+  </section>;
+}
+
 export type Subscriber = { data: ProData | null; range: HistoryRangeId; basePath: string };
 
 export default function IndexView({ index, subscriber, notice }: { index: PublicIndex; subscriber?: Subscriber; notice?: ReactNode }) {
@@ -192,5 +211,6 @@ export default function IndexView({ index, subscriber, notice }: { index: Public
       {!subscriber && <ReportLink/>}
     </section>
     {!subscriber && <AccessPanel/>}
+    <AboutIndex/>
   </PageShell>;
 }
