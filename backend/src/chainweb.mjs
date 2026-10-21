@@ -313,8 +313,23 @@ export function createChainwebClient(options = {}) {
       const raw = await request(`${PREFIX}/chain/${chain}/pact/api/v1/local?rewindDepth=${depth}`, {
         body: { cmd: command, hash: pactCommandHash(command), sigs: [] },
       });
+      if (typeof raw === 'string') {
+        const message = raw.trim().replace(/[\x00-\x1f]/g, ' ').slice(0, 120) || 'empty response';
+        const error = new Error(`Historical Pact node response: ${message}`);
+        error.code = message === 'Transaction timed out' ? 'CHAINWEB_PACT_TIMEOUT' : 'CHAINWEB_PACT_RESPONSE';
+        throw error;
+      }
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        const error = new Error('Historical Pact response is not a metadata-bearing object');
+        error.code = 'CHAINWEB_PACT_RESPONSE';
+        throw error;
+      }
       const metadata = raw.metaData;
-      if (!metadata || !Number.isSafeInteger(metadata.blockHeight)) throw new Error('Historical Pact response lacks state metadata');
+      if (!metadata || !Number.isSafeInteger(metadata.blockHeight)) {
+        const error = new Error('Historical Pact response lacks state metadata');
+        error.code = 'CHAINWEB_PACT_RESPONSE';
+        throw error;
+      }
       if (metadata.blockHeight === height + 1 && metadata.prevBlockHash === target.hash) {
         if (raw.result?.status !== 'success') throw new Error('Read-only historical Pact query failed');
         return { chain, height, blockHash: target.hash, result: raw.result, data: raw.result.data, metadata, raw };

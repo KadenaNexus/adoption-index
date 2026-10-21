@@ -156,10 +156,17 @@ export function verifyEscrowPositions(positions, escrows, namespace) {
     return { ...position, account: row.account, escrowBalance: amount(row.details.balance), escrowGuard: guard };
   });
 }
-/** One chain 2 read per day: every listed component lives on chain 2. */
+/** Build bounded chain 2 reads, all pinned to the same daily header. */
 export function nativeQueries(registry, height) {
   const find = id => registry.protocols.find(item => item.id === id), bro = find('brodex'), ksw = find('koberlusw'), pairs = activePairs(bro, height);
-  const books = '[' + pairs.flatMap(pair => ['true', 'false'].map(side => `(${bro.namespace}.bro-dex-view-${pair.name}.get-orderbook ${side} 0 100)`)).join(' ') + ']';
+  // Keep each orderbook page in its own read-only Pact request. Bundling every
+  // market into one local command grows past the public node's transaction
+  // execution budget as markets and order counts increase.
+  const books = pairs.flatMap(pair => ['true', 'false'].map(side => ({
+    pair: pair.name,
+    side: side === 'true' ? 'ask' : 'bid',
+    code: `(${bro.namespace}.bro-dex-view-${pair.name}.get-orderbook ${side} 0 100)`,
+  })));
   const precisions = '{' + [...new Set(pairs.map(pair => pair.quote))].map(token => `${JSON.stringify(token)}: (${token}.precision)`).join(', ') + '}';
   const hashes = '{' + pairs.map(pair => {
     const module = `${bro.namespace}.bro-dex-core-${pair.name}`;
@@ -169,7 +176,14 @@ export function nativeQueries(registry, height) {
   const custody = '[' + ksw.custody.map(item => '[' + ksw.assets.map(asset =>
     `(try {"exists": false} {"exists": true, "balance": (${asset}.get-balance ${JSON.stringify(item.account)})})`).join(' ') + ']').join(' ') + ']';
   return {
-    '2': `{"pools": (select kaddex.exchange.pairs (constantly true)), "staking": (kaddex.staking.get-pool-state), "books": ${books}, "quotePrecisions": ${precisions}, "broModuleHashes": ${hashes}, "custody": ${custody}}`,
+    '2': {
+      pools: '(select kaddex.exchange.pairs (constantly true))',
+      staking: '(kaddex.staking.get-pool-state)',
+      books,
+      quotePrecisions: precisions,
+      broModuleHashes: hashes,
+      custody,
+    },
   };
 }
 /** KoberluSW: each listed asset held by each custody account. An absent account holds nothing; every other read must be a balance. */
@@ -232,7 +246,16 @@ export async function collectTvl({ day, cut, headers }) {
     evidence.reads.push({ chain, header: target, query: code, metadata: result.metadata, raw: result.raw });
     return result.data ?? result.result?.data;
   }
-  for (const chain of Object.keys(queries)) state[chain] = await read(chain, queries[chain]);
+  for (const [chain, components] of Object.entries(queries)) {
+    const chainState = {};
+    for (const [name, query] of Object.entries(components)) {
+      if (name === 'books') {
+        chainState.books = [];
+        for (const book of query) chainState.books.push(await read(chain, book.code));
+      } else chainState[name] = await read(chain, query);
+    }
+    state[chain] = chainState;
+  }
   const bro = registry.protocols.find(item => item.id === 'brodex'), pairs = activePairs(bro, height), books = [];
   for (const pair of pairs) {
     const module = `${bro.namespace}.bro-dex-core-${pair.name}`;

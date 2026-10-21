@@ -96,6 +96,16 @@ test('historical state at right height but wrong hash is rejected', async () => 
   await assert.rejects(client.listModulesAt({ chain: 2, height: 10, tipHash: hash('z') }), /different canonical/);
 });
 
+test('historical Pact timeout text is surfaced as a typed upstream error', async () => {
+  const client = createChainwebClient({ fetchImpl: async url => {
+    if (url.includes('/header/branch?')) return response({ items: [header(10, 'a', 'q')], next: null });
+    if (url.endsWith('/cut')) return response(cut());
+    return response('Transaction timed out');
+  } });
+  await assert.rejects(client.listModulesAt({ chain: 2, height: 10, tipHash: hash('z') }), error =>
+    error.code === 'CHAINWEB_PACT_TIMEOUT' && /Transaction timed out/.test(error.message));
+});
+
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 const blockItem = h => ({ header: h, payloadWithOutputs: { payloadHash: h.payloadHash, transactions: [], coinbase: encoded({ result: { status: 'success', data: 'reward' } }), minerData: encoded({ account: 'miner' }) } });
 

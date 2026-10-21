@@ -66,16 +66,20 @@ test('Invalid and incomplete UTC dates fail before any source request', async ()
   await assert.rejects(collectTvl({ day: '2026-02-31' }), /Invalid UTC day/);
   await assert.rejects(collectTvl({ day: '2099-01-01' }), /not yet complete/);
 });
-test('Versioned registry covers the active protocols, all on chain 2, with one native query', async () => {
+test('Versioned registry covers the active protocols with bounded chain 2 reads', async () => {
   const registry = await loadRegistry();
   assert.deepEqual(registry.protocols.map(item => item.id), ['mercatus-amm', 'mercatus-staking', 'brodex', 'koberlusw']);
   assert.equal(registry.baselineHeight, 6335858);
   assert.ok(registry.protocols.every(item => item.chain === '2' && item.startHeight === registry.baselineHeight && item.endHeight === null));
   const queries = nativeQueries(registry, 7300000), ksw = registry.protocols.find(item => item.id === 'koberlusw');
   assert.deepEqual(Object.keys(queries), ['2']);
-  assert.match(queries['2'], /quotePrecisions/);
-  assert.equal(queries['2'].match(/\(try \{"exists": false\}/g).length, ksw.custody.length * ksw.assets.length);
-  assert.ok(ksw.custody.every(item => queries['2'].includes(`.get-balance "${item.account}"`)));
+  const chain2 = queries['2'];
+  assert.match(chain2.quotePrecisions, /\.precision/);
+  assert.equal(chain2.custody.match(/\(try \{"exists": false\}/g).length, ksw.custody.length * ksw.assets.length);
+  assert.ok(ksw.custody.every(item => chain2.custody.includes(`.get-balance "${item.account}"`)));
+  assert.equal(chain2.books.length, 10);
+  assert.ok(chain2.books.every(book => book.code.match(/get-orderbook/g).length === 1));
+  assert.equal(new Set(chain2.books.map(book => `${book.pair}:${book.side}`)).size, chain2.books.length);
   for (const removed of ['KDSwap', 'KDLaunch', 'Chips', 'Cabinet']) assert.ok(registry.exclusions.some(item => item.component.includes(removed) && /inactive/.test(item.reason)), removed);
   assert.ok(registry.exclusions.some(item => item.component.includes('LP receipt')));
 });
@@ -86,8 +90,8 @@ test('BroDEX markets are read only from the block that completed their deploymen
   assert.deepEqual(names(7081490), ['BRO-KDA-M', 'BRO-zUSD-M', 'BRO-HERON-M', 'BRO-kbUSDC-M', 'KDA-kbUSDC-M']);
   assert.ok(bro.pairs.every(pair => bro.verifiedModuleHashes[`${bro.namespace}.bro-dex-core-${pair.name}`]));
   const before = nativeQueries({ protocols: [bro, (await loadRegistry()).protocols.find(item => item.id === 'koberlusw')] }, 7081479)['2'];
-  assert.equal(before.match(/get-orderbook/g).length, 6);
-  assert.doesNotMatch(before, /kbUSDC/);
+  assert.equal(before.books.length, 6);
+  assert.ok(before.books.every(book => !book.code.includes('kbUSDC')));
   assert.throws(() => activePairs(bro, undefined), /height is required/);
 });
 test('KoberluSW custody: an absent account holds nothing, balances are valued once, any other read fails', () => {
