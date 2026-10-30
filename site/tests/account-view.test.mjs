@@ -107,8 +107,8 @@ test('admin overview in the shape the backend sends: preformatted amounts, resol
       { userId: 2, email: 'x@y.co', plan: 'manual', startedAt: '2026-01-01T00:00:00.000Z', expiresAt: '2026-02-01T00:00:00.000Z', active: false }],
     counts: { users: 3, activeSubscriptions: 1, confirmedPayments: 1, pendingPayments: 1, unresolvedTransfers: 2, queuedEmails: 0, failedEmails: 1 },
     actions: [
-      { id: 2, adminEmail: 'naif@kadena.ws', action: 'resolve_unmatched', userId: null, details: { network: 'bsc-testnet', txHash: hash, logIndex: 1, note: 'claimed' }, createdAt: '2026-09-29T12:00:00.000Z' },
-      { id: 1, adminEmail: 'naif@kadena.ws', action: 'extend_subscription', userId: 1, details: { email: 'a@b.co', days: 30, note: 'Binance withdrawal', plan: 'manual' }, createdAt: '2026-09-29T11:00:00.000Z' },
+      { id: 2, adminEmail: 'saudi.kda@kadena.ws', action: 'resolve_unmatched', userId: null, details: { network: 'bsc-testnet', txHash: hash, logIndex: 1, note: 'claimed' }, createdAt: '2026-09-29T12:00:00.000Z' },
+      { id: 1, adminEmail: 'saudi.kda@kadena.ws', action: 'extend_subscription', userId: 1, details: { email: 'a@b.co', days: 30, note: 'Binance withdrawal', plan: 'manual' }, createdAt: '2026-09-29T11:00:00.000Z' },
     ],
   });
   assert.equal(view.testnet, true);
@@ -123,7 +123,7 @@ test('admin overview in the shape the backend sends: preformatted amounts, resol
   assert.deepEqual(view.counts, { users: 3, activeSubscriptions: 1, confirmedPayments: 1, pendingPayments: 1, unresolvedTransfers: 2, queuedEmails: 0, failedEmails: 1, openReports: null });
   assert.deepEqual(view.reports, [], 'a backend without reports still parses');
   assert.deepEqual(view.actions.map(a => [a.date, a.admin, a.action, a.summary]), [
-    ['29 Sep 2026', 'naif@kadena.ws', 'Resolved transfer', `${shortHash(hash)} · “claimed”`], ['29 Sep 2026', 'naif@kadena.ws', 'Extended subscription', 'a@b.co · +30 days · “Binance withdrawal”']]);
+    ['29 Sep 2026', 'saudi.kda@kadena.ws', 'Resolved transfer', `${shortHash(hash)} · “claimed”`], ['29 Sep 2026', 'saudi.kda@kadena.ws', 'Extended subscription', 'a@b.co · +30 days · “Binance withdrawal”']]);
   const bare = parseOverview({ payments: [], unmatched: [], subscriptions: [] });
   assert.deepEqual([bare.testnet, bare.actions, bare.counts.users], [false, [], null]);
   assert.equal(parseOverview({ payments: [] }), null);

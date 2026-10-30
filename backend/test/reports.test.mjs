@@ -73,7 +73,7 @@ test('the email is optional and must be a plain address; a reference that is not
  assert.deepEqual((await h.db.query('SELECT DISTINCT email FROM data_reports')).rows,[{email:null}]);
  assert.ok((await h.db.query('SELECT text_body FROM email_outbox ORDER BY id LIMIT 1')).rows[0].text_body.includes('Follow-up email: None given'));
  // These pass the sign-in check but could hide text or add mailto: headers.
- for(const email of ['x@evil.example?cc=boss%40example.com','a\u200b@b.co','naif@kadena.io\u202e','a&b@example.com','ok@exämple.com']){
+ for(const email of ['x@evil.example?cc=boss%40example.com','a\u200b@b.co','saudi.kda@kadena.io\u202e','a&b@example.com','ok@exämple.com']){
   const response=await report(h,{email},{ip:'198.51.100.9'});assert.deepEqual([response.status,response.body],[400,{error:'invalid_email'}],JSON.stringify(email));
  }
  assert.equal((await report(h,{email:'First.Last+tag@Sub.Example.co.uk'},{ip:'198.51.100.9'})).status,202);

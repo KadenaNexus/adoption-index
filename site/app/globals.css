@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Kadena Community Edition Adoption Index — matched to Naif's UI mockup (views A and B). */
+/* Kadena Community Edition Adoption Index — matched to Saudi.KDA's UI mockup (views A and B). */
 :root {
   --bg: #ffffff; --surface: #fafafa; --line: #e6e6e6; --grid: #ececec;
   --ink: #111111; --ink-2: #374151; --muted: #6b7280; --subtle: #9ca3af; --axis: #7b828c;
