@@ -9,7 +9,7 @@ const scaled=(i,factor)=>row(i,{addresses:Math.round(BASE.addresses*factor),cont
 const history=(days,factorFor=()=>1)=>Array.from({length:days},(_,i)=>i<30?row(i):scaled(i,factorFor(i)));
 const through=rows=>({throughDay:rows.at(-1).day});
 
-test('baseline activity scores 50 and the index has no ceiling (Naif\'s worked examples)',()=>{
+test('baseline activity scores 50 and the index has no ceiling (Saudi.KDA\'s worked examples)',()=>{
  for(const [factor,expected] of [[1,50],[2,100],[3,150],[.8,40]]){
   const rows=history(44,()=>factor),out=calculateSeries(rows,through(rows));
   assert.equal(out.at(-1).score,expected,`factor ${factor}`);
