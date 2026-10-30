@@ -16,7 +16,7 @@ import { POST as sendReport } from '../app/api/reports/route.ts';
 import { POST as resolveReport } from '../app/api/admin/reports/resolve/route.ts';
 import { GET as exportCsv } from '../app/api/export/route.ts';
 
-const EXPIRES = '2026-10-29T12:00:00.000Z';
+const EXPIRES = '2036-10-29T12:00:00.000Z';
 const verified = (extra = {}) => ({ status: 200, json: { sessionToken: TOKEN, expiresAt: EXPIRES, next: '/checkout?plan=annual', ...extra } });
 const read = async response => ({ status: response.status, text: await response.text(), cookies: response.headers.getSetCookie() });
 const withBackend = async (reply, run) => { const backend = await stubBackend(reply); try { await run(backend); } finally { await backend.close(); } };
@@ -42,7 +42,7 @@ test('verify results map to a cookie and {next}: the session token never reaches
 
 test('session cookie: httpOnly, Lax, whole site; cleared with the same name and path', () => {
   const set = sessionCookie(TOKEN, EXPIRES);
-  assert.equal(set, `kce_session=${TOKEN}; Path=/; Expires=Thu, 29 Oct 2026 12:00:00 GMT; HttpOnly; SameSite=Lax`);
+  assert.equal(set, `kce_session=${TOKEN}; Path=/; Expires=Wed, 29 Oct 2036 12:00:00 GMT; HttpOnly; SameSite=Lax`);
   assert.equal(clearedSessionCookie(), 'kce_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax');
   assert.equal(sessionFromCookies(`a=1; kce_session=${TOKEN}; b=2`), TOKEN);
   assert.equal(sessionFromCookies(`kce_session=${OTHER_TOKEN}; kce_session=${TOKEN}`), TOKEN, 'the last duplicate wins, as in next/headers');
@@ -55,7 +55,7 @@ test('in production the cookie is __Host- prefixed and Secure', () => {
   const lib = new URL('../lib/site-api.ts', import.meta.url).href;
   const script = `const m = await import(${JSON.stringify(lib)}); console.log(JSON.stringify([m.sessionCookie(${JSON.stringify(TOKEN)}, ${JSON.stringify(EXPIRES)}), m.clearedSessionCookie(), m.sessionFromCookies('__Host-kce_session=${TOKEN}'), m.sessionFromCookies('kce_session=${TOKEN}')]));`;
   const [set, cleared, host, plain] = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], { env: { ...process.env, NODE_ENV: 'production' }, cwd: fileURLToPath(new URL('..', import.meta.url)) }).toString());
-  assert.equal(set, `__Host-kce_session=${TOKEN}; Path=/; Expires=Thu, 29 Oct 2026 12:00:00 GMT; Secure; HttpOnly; SameSite=Lax`);
+  assert.equal(set, `__Host-kce_session=${TOKEN}; Path=/; Expires=Wed, 29 Oct 2036 12:00:00 GMT; Secure; HttpOnly; SameSite=Lax`);
   assert.equal(cleared, '__Host-kce_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Secure; HttpOnly; SameSite=Lax');
   assert.equal(host, TOKEN);
   assert.equal(plain, null, 'a planted unprefixed cookie is ignored in production');
@@ -92,7 +92,7 @@ test('verify: the token goes only into an httpOnly cookie; the page gets {next}'
     assert.equal(status, 200);
     assert.deepEqual(JSON.parse(text), { next: '/checkout?plan=annual' });
     assert.ok(!text.includes(TOKEN) && !text.includes('sessionToken') && !text.includes('a@b.co'), 'nothing but next is relayed');
-    assert.deepEqual(cookies, [`kce_session=${TOKEN}; Path=/; Expires=Thu, 29 Oct 2026 12:00:00 GMT; HttpOnly; SameSite=Lax`]);
+    assert.deepEqual(cookies, [`kce_session=${TOKEN}; Path=/; Expires=Wed, 29 Oct 2036 12:00:00 GMT; HttpOnly; SameSite=Lax`]);
     const [call] = backend.requests;
     assert.equal(backend.requests.length, 1);
     assert.deepEqual([call.method, call.path, call.body], ['POST', '/auth/verify', { token: TOKEN }]);
