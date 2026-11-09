@@ -1,6 +1,6 @@
 import {transaction} from './db.mjs';
 import {assertAccountExtractionReady} from './account-extraction.mjs';
-import {assertModuleArtifactPolicyCurrent} from './module-policy.mjs';
+import {assertModuleArtifactPolicyCurrent,applyReviewedModuleDecisions} from './module-policy.mjs';
 import {indexBlocks,dailyChainMetrics,saveEvidence,assertModuleIdentitiesReviewed,assertCollectionState,pruneRetention} from './ingest.mjs';
 import {collectGithub,auditGithubHistory} from './github.mjs';
 import {collectTvl,loadRegistry} from './tvl.mjs';
@@ -66,6 +66,8 @@ export async function publishIndex(db,rows,{throughDay=completedDay()}={}){
   // Wait for in-flight classifications and prevent them changing between the
   // final policy check and commit. Direct publication callers use this gate too.
   await tx.query('LOCK TABLE module_deployments IN SHARE MODE');
+  // Reviewed decisions committed to the policy file are applied under the same lock.
+  await applyReviewedModuleDecisions(tx);
   await assertModuleArtifactPolicyCurrent(tx,window.cutoff);
   // Reconciliation may have completed after aggregation. Even if every stored
   // classification now agrees, previously computed contract counts are stale.
