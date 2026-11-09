@@ -43,6 +43,42 @@ export function evaluateArtifactPolicy(rows, policy) {
     checked: rows.length, mismatches, awaitingReview, issues};
 }
 
+const canonicalDigest = value => createHash('sha256').update(JSON.stringify(value, (_key, item) =>
+  item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]]))
+    : item)).digest('hex');
+
+/**
+ * Applies reviewed decisions committed to config/module-policy.json to rows still
+ * stored as 'review'. Only touches a row when the policy lists its exact id as
+ * included or excluded AND has a decision record for the same request key and
+ * height. Rows already 'included' or 'excluded' are never changed. Each applied
+ * decision leaves a review record in source_evidence ('module-artifact-review').
+ */
+export async function applyReviewedModuleDecisions(db, {now = new Date()} = {}) {
+  const {policy, sha256} = await loadModulePolicy();
+  const decisions = policy.decisions && typeof policy.decisions === 'object' ? policy.decisions : {};
+  const {rows} = await db.query(`SELECT chain,name,height::text AS height,request_key,
+    (block_time AT TIME ZONE 'UTC')::date::text AS day
+    FROM module_deployments WHERE kind='new' AND artifact_status='review' ORDER BY chain,height,request_key,name`);
+  const applied = [];
+  for (const row of rows) {
+    const id = `${row.chain}:${row.name}`, expected = artifactStatus(row.chain, row.name, policy), decision = decisions[id];
+    if (expected === 'review' || !decision || decision.status !== expected ||
+        decision.sourceRequestKey !== row.request_key || String(decision.sourceHeight) !== String(row.height)) continue;
+    const updated = await db.query(`UPDATE module_deployments SET artifact_status=$1, policy_version=$2
+      WHERE chain=$3 AND request_key=$4 AND name=$5 AND kind='new' AND artifact_status='review'`,
+      [expected, policy.version, row.chain, row.request_key, row.name]);
+    if (!updated.rowCount) continue;
+    const payload = {id, previousStatus: 'review', status: expected, requestKey: row.request_key, height: row.height,
+      policyVersion: policy.version, policySha256: sha256, decision, appliedAt: now.toISOString()};
+    await db.query(`INSERT INTO source_evidence(source,day,digest,payload) VALUES('module-artifact-review',$1,$2,$3)
+      ON CONFLICT (source,digest) DO NOTHING`, [row.day, canonicalDigest({id, status: expected, requestKey: row.request_key, policyVersion: policy.version}), payload]);
+    applied.push({id, status: expected});
+  }
+  return applied;
+}
+
 /** Only new deployments in the fixed collection period affect this metric. */
 export async function moduleArtifactPolicyReport(db, cutoff) {
   if (typeof cutoff !== 'string' || !/^\d{4}-\d{2}-\d{2}T00:00:00(?:\.000)?Z$/.test(cutoff) ||

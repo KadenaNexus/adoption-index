@@ -1,12 +1,13 @@
 {
-  "version": "kce-growing-policy-2-2026-09-27",
+  "version": "kce-growing-policy-3-2026-11-09",
   "description": "Fixed collection start 2026-06-29 with permanent growing daily history. Only newly deployed identities since collection start are eligible. Suspicious names require exact source evidence; never exclude by name alone. Kept for every decision below: the signed successful deployment (command, signers, module code, output, source block and header) in the database table module_deployments.evidence, and the review record in source_evidence (source 'module-artifact-review').",
   "includedModules": [],
   "excludedModules": [
     "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST",
     "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-launch-TEST",
     "1:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST",
-    "2:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST"
+    "2:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST",
+    "2:n_f5d322747da08693718b6d25e48b087c58b40f8e.linx-test"
   ],
   "decisions": {
     "0:n_8dd4aff253ea2f5d2032d20fe63d166959050009.SPT-TEST": {
@@ -56,6 +57,19 @@
       "sourceDocQuote": "THROWAWAY TEST COPY (2026-08-29) — NOT the real SPT, holds no value, will be abandoned.",
       "verifiedAt": "2026-09-27T16:19:52.921Z",
       "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review)"
+    },
+    "2:n_f5d322747da08693718b6d25e48b087c58b40f8e.linx-test": {
+      "status": "excluded",
+      "reason": "The signed successful deployment is a TokenGo test token whose own metadata says it has no value (name \"Linx test\", symbol LXTEST, total supply 1000).",
+      "sourceRequestKey": "MEMPWHoZr2yXrut6BfbQjhVhTAEceAEWTWvflXlyOOk",
+      "sourceHeight": "7374762",
+      "sourceBlockHash": "22UxG9Lh3Dvo8eh9IhWb_DFSP6q-T85BsbaqxOCKBbk",
+      "codeSha256": "e2fa3f1216025511e30b188958433d28c36599c1df1c5ec16f2bbabe7cccf3ed",
+      "codeSha256Source": "describe-module on chain 2 (api.chainweb-community.org), 2026-11-09",
+      "sourceDocQuote": "\"description\": \"Linx Test token no value \"",
+      "verifiedAt": "2026-11-09T04:20:00.000Z",
+      "reviewedBy": "Saudi.KDA",
+      "retainedEvidence": "module_deployments.evidence; review record in source_evidence (module-artifact-review), written when the decision is applied"
     }
   },
   "reviewNamePatterns": [

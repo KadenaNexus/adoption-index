@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { transaction } from './db.mjs';
 import { assertAccountExtractionReady } from './account-extraction.mjs';
-import { artifactStatus, assertModuleArtifactPolicyCurrent } from './module-policy.mjs';
+import { artifactStatus, assertModuleArtifactPolicyCurrent, applyReviewedModuleDecisions } from './module-policy.mjs';
 export { artifactStatus } from './module-policy.mjs';
 import { FORK_HEIGHT, METHOD_VERSION } from './scoring.mjs';
 import { addDays, completedDay, windowFor, COLLECTION_START, INITIAL_HISTORY_DAYS } from './window.mjs';
@@ -289,6 +289,7 @@ export async function dailyChainMetrics(db, throughDay = completedDay()) {
   const chains = new Set(checkpoints.map(c => Number(c.chain)));
   if (checkpoints.length !== 20 || Array.from({ length: 20 }, (_, chain) => chain).some(chain => !chains.has(chain)) || checkpoints.some(c =>
       !Number.isFinite(new Date(c.block_time).getTime()) || new Date(c.block_time).getTime() < cutoffTime || String(c.coverage_start).slice(0, 10) !== window.fromDay)) throw new Error('All 20 chains must cover the complete collection history and be indexed beyond the final UTC boundary');
+  await applyReviewedModuleDecisions(db);
   await assertModuleArtifactPolicyCurrent(db, window.cutoff);
   const [accounts, contracts, stats] = await Promise.all([
     db.query('SELECT day::text,count(*)::int AS n FROM daily_accounts WHERE day >= $1 AND day <= $2 GROUP BY day', [window.fromDay, throughDay]),
